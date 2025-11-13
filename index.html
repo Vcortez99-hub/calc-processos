@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Renegociação | Cabanellos</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #C4A35A 0%, #8B7355 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .header {
+            background: linear-gradient(135deg, #C4A35A 0%, #8B7355 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 20px 20px 0 0;
+        }
+        .header h1 { 
+            font-size: 28px; 
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+            font-weight: 300;
+        }
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+            letter-spacing: 1px;
+        }
+        .input-section { padding: 30px; background: #f8f9fa; }
+        .input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .input-group-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .form-field { display: flex; flex-direction: column; }
+        .form-field label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2C3E50;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-field select, .form-field input {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-field select:focus, .form-field input:focus {
+            outline: none;
+            border-color: #C4A35A;
+        }
+        .info-box {
+            background: #fff9e6;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #C4A35A;
+        }
+        .info-box-title {
+            font-weight: 600;
+            color: #8B7355;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        .info-box-text {
+            font-size: 12px;
+            color: #6B5B47;
+            line-height: 1.5;
+        }
+        .contracts-section { padding: 30px; }
+        .contracts-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2C3E50;
+            letter-spacing: 0.5px;
+        }
+        .contract-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 100px;
+            gap: 15px;
+            align-items: center;
+        }
+        .contract-item input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .btn-add {
+            background: #C4A35A;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .btn-add:hover {
+            background: #B39350;
+        }
+        .btn-calculate {
+            background: linear-gradient(135deg, #C4A35A 0%, #8B7355 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 700;
+            margin: 30px;
+            width: calc(100% - 60px);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: transform 0.2s;
+        }
+        .btn-calculate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(196, 163, 90, 0.3);
+        }
+        .results-section { padding: 30px; background: #f8f9fa; }
+        .info-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .info-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+            border-top: 3px solid #C4A35A;
+        }
+        .info-card-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+        .info-card-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #C4A35A;
+        }
+        .scenarios-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .scenario-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 2px solid transparent;
+            transition: transform 0.2s;
+        }
+        .scenario-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        .scenario-card.best {
+            border: 2px solid #C4A35A;
+            background: linear-gradient(135deg, #ffffff 0%, #fff9e6 100%);
+        }
+        .scenario-badge {
+            display: inline-block;
+            background: #C4A35A;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .range-badge {
+            display: inline-block;
+            background: #8B7355;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .scenario-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2C3E50;
+            margin-bottom: 15px;
+        }
+        .scenario-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 14px;
+        }
+        .scenario-pmt {
+            background: linear-gradient(135deg, #C4A35A 0%, #8B7355 100%);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .scenario-pmt-label { font-size: 12px; opacity: 0.9; }
+        .scenario-pmt-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+        .extra-payment-section {
+            background: #fff9e6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #C4A35A;
+        }
+        .extra-payment-title {
+            font-weight: 600;
+            color: #8B7355;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        .extra-payment-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 13px;
+            color: #6B5B47;
+        }
+        .debito-section {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #3b82f6;
+        }
+        .debito-title {
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        .debito-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            font-size: 13px;
+            color: #1e3a8a;
+        }
+        .btn-remove {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn-remove:hover {
+            background: #b91c1c;
+        }
+        .alert {
+            background: #e8f4f8;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CABANELLOS</h1>
+            <p>Calculadora de Renegociação de Dívidas</p>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <div class="form-field">
+                    <label>Status da Liminar</label>
+                    <select id="liminar">
+                        <option value="deferido">DEFERIDO (Com Liminar)</option>
+                        <option value="indeferido">INDEFERIDO (Sem Liminar)</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label>Margem Consignável (R$)</label>
+                    <input type="text" id="margem" placeholder="Ex: 1.462,16">
+                </div>
+                <div class="form-field">
+                    <label>Parcelas do Reforço (meses)</label>
+                    <input type="number" id="parcelas-reforco" value="12" min="1" max="24">
+                </div>
+            </div>
+            <div class="input-group-2">
+                <div class="form-field">
+                    <label>Parcelas Débito em Conta (meses)</label>
+                    <input type="number" id="parcelas-debito" value="150" min="1" max="150">
+                </div>
+                <div class="info-box">
+                    <div class="info-box-title">📋 Entenda as modalidades:</div>
+                    <div class="info-box-text">
+                        <strong>Reforço:</strong> Parcela extra opcional para pagar o desconto concedido<br>
+                        <strong>Débito em Conta:</strong> Facilita o valor que não cabe na margem consignável
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="contracts-section">
+            <div class="contracts-title">📋 Contratos</div>
+            <div id="contracts-container">
+                <div class="contract-item">
+                    <input type="text" placeholder="Saldo (R$)" class="contract-saldo">
+                    <input type="text" placeholder="PMT Atual (R$)" class="contract-pmt">
+                    <button class="btn-remove" onclick="removeContract(this)">Remover</button>
+                </div>
+            </div>
+            <button class="btn-add" onclick="addContract()">+ Adicionar Contrato</button>
+        </div>
+
+        <button class="btn-calculate" onclick="calcular()">🔍 CALCULAR CENÁRIOS</button>
+
+        <div class="results-section" id="results" style="display: none;">
+            <h2 style="text-align: center; margin-bottom: 20px; color: #2C3E50;">📊 Resultados da Análise</h2>
+            
+            <div class="info-cards">
+                <div class="info-card">
+                    <div class="info-card-label">Margem Disponível</div>
+                    <div class="info-card-value" id="info-margem">R$ 0,00</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-label">PMT Atual Total</div>
+                    <div class="info-card-value" id="info-pmt-atual">R$ 0,00</div>
+                </div>
+                <div class="info-card">
+                    <div class="info-card-label">Saldo Total</div>
+                    <div class="info-card-value" id="info-saldo-total">R$ 0,00</div>
+                </div>
+            </div>
+
+            <div id="alert-container"></div>
+            <div class="scenarios-grid" id="scenarios-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        function addContract() {
+            const container = document.getElementById('contracts-container');
+            const div = document.createElement('div');
+            div.className = 'contract-item';
+            div.innerHTML = `
+                <input type="text" placeholder="Saldo (R$)" class="contract-saldo">
+                <input type="text" placeholder="PMT Atual (R$)" class="contract-pmt">
+                <button class="btn-remove" onclick="removeContract(this)">Remover</button>
+            `;
+            container.appendChild(div);
+            addInputListeners();
+        }
+
+        function removeContract(btn) {
+            const container = document.getElementById('contracts-container');
+            if (container.children.length > 1) {
+                btn.parentElement.remove();
+            }
+        }
+
+        function parseBR(val) {
+            if (!val) return 0;
+            const cleaned = val.toString().replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
+            return parseFloat(cleaned) || 0;
+        }
+
+        function formatBR(val) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+                minimumFractionDigits: 2
+            }).format(val);
+        }
+
+        function formatInput(input) {
+            const valor = parseBR(input.value);
+            if (valor > 0) {
+                input.value = valor.toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+        }
+
+        function addInputListeners() {
+            document.querySelectorAll('input[type="text"]').forEach(input => {
+                input.removeEventListener('paste', handlePaste);
+                input.removeEventListener('blur', handleBlur);
+                input.addEventListener('paste', handlePaste);
+                input.addEventListener('blur', handleBlur);
+            });
+        }
+
+        function handlePaste(e) { setTimeout(() => formatInput(e.target), 10); }
+        function handleBlur(e) {
+            if (e.target.classList.contains('contract-saldo') || 
+                e.target.classList.contains('contract-pmt') || 
+                e.target.id === 'margem') {
+                formatInput(e.target);
+            }
+        }
+
+        function calcPMT(saldo, taxa, prazo) {
+            if (taxa === 0) return saldo / prazo;
+            return (taxa * saldo) / (1 - Math.pow(1 + taxa, -prazo));
+        }
+
+        function getMaxDesc(prazo, liminar) {
+            if (prazo <= 84) return liminar ? 0.35 : 0.20;
+            if (prazo <= 96) return liminar ? 0.25 : 0.20;
+            if (prazo <= 149) return 0.15;
+            return 0.10;
+        }
+
+        function getRangeName(prazo) {
+            if (prazo <= 84) return 'Até 84 meses';
+            if (prazo <= 96) return '85-96 meses';
+            if (prazo <= 149) return '97-149 meses';
+            return '150 meses';
+        }
+
+        function calcular() {
+            try {
+                const liminar = document.getElementById('liminar').value === 'deferido';
+                const margem = parseBR(document.getElementById('margem').value);
+                const parcelasReforco = parseInt(document.getElementById('parcelas-reforco').value) || 12;
+                const parcelasDebito = parseInt(document.getElementById('parcelas-debito').value) || 150;
+                
+                if (margem === 0) {
+                    alert('Por favor, informe a margem consignável!');
+                    return;
+                }
+
+                const items = document.querySelectorAll('.contract-item');
+                const contratos = [];
+                let pmtAtual = 0, saldoTotal = 0;
+
+                items.forEach(item => {
+                    const saldo = parseBR(item.querySelector('.contract-saldo').value);
+                    const pmt = parseBR(item.querySelector('.contract-pmt').value);
+                    if (saldo > 0) {
+                        contratos.push({saldo, pmt: pmt || 0});
+                        saldoTotal += saldo;
+                        pmtAtual += pmt;
+                    }
+                });
+
+                if (contratos.length === 0) {
+                    alert('Adicione pelo menos um contrato com saldo válido!');
+                    return;
+                }
+
+                document.getElementById('info-margem').textContent = formatBR(margem);
+                document.getElementById('info-pmt-atual').textContent = formatBR(pmtAtual);
+                document.getElementById('info-saldo-total').textContent = formatBR(saldoTotal);
+
+                const prazos = [
+                    150, 149, 145, 140, 135, 130, 125, 120, 115, 110, 105, 100, 97,
+                    96, 95, 90, 88, 85, 84, 80, 78, 72, 70, 66, 60, 54, 48, 42, 36, 30, 24
+                ];
+                
+                const taxa = 0.012;
+                const cenarios = [];
+
+                prazos.forEach(prazo => {
+                    const maxDesc = getMaxDesc(prazo, liminar);
+                    
+                    for (let desc = 0; desc <= maxDesc; desc += 0.005) {
+                        let pmtTotal = 0, saldoOrig = 0, saldoDesc = 0;
+
+                        contratos.forEach(c => {
+                            const saldoComDesc = c.saldo * (1 - desc);
+                            const pmtContrato = calcPMT(saldoComDesc, taxa, prazo);
+                            pmtTotal += pmtContrato;
+                            saldoOrig += c.saldo;
+                            saldoDesc += saldoComDesc;
+                        });
+
+                        const montante = pmtTotal * prazo;
+                        const valorDesc = saldoOrig - saldoDesc;
+                        const parcelaReforcoCalc = valorDesc / parcelasReforco;
+                        
+                        const cabeNaMargem = pmtTotal <= margem;
+                        const margemSobrando = cabeNaMargem ? (margem - pmtTotal) : 0;
+                        
+                        const valorFaltante = !cabeNaMargem ? (pmtTotal - margem) : 0;
+                        const parcelaDebito = valorFaltante > 0 ? (valorFaltante / parcelasDebito) : 0;
+                        const pmtComDebito = !cabeNaMargem ? (margem + parcelaDebito) : pmtTotal;
+
+                        cenarios.push({
+                            prazo, desc: desc * 100, saldoOrig, saldoDesc, valorDesc,
+                            pmt: pmtTotal, montante, custo: montante - saldoDesc,
+                            cabeNaMargem, margemSobrando, parcelaReforco: parcelaReforcoCalc,
+                            parcelasReforco, valorFaltante, parcelaDebito, parcelasDebito,
+                            pmtComDebito, range: getRangeName(prazo)
+                        });
+                    }
+                });
+
+                cenarios.sort((a, b) => {
+                    if (b.prazo !== a.prazo) return b.prazo - a.prazo;
+                    return a.desc - b.desc;
+                });
+
+                const top = cenarios.slice(0, 20);
+                const totalViaveis = cenarios.filter(c => c.cabeNaMargem).length;
+
+                const stats = {
+                    'ate84': cenarios.filter(c => c.prazo <= 84).length,
+                    '85a96': cenarios.filter(c => c.prazo >= 85 && c.prazo <= 96).length,
+                    '97a149': cenarios.filter(c => c.prazo >= 97 && c.prazo <= 149).length,
+                    '150': cenarios.filter(c => c.prazo === 150).length
+                };
+
+                document.getElementById('results').style.display = 'block';
+                const grid = document.getElementById('scenarios-grid');
+                grid.innerHTML = '';
+
+                document.getElementById('alert-container').innerHTML = `
+                    <div class="alert">
+                        <strong>💡 Análise Completa de Todos os Ranges</strong><br>
+                        <strong>${cenarios.length} cenários</strong> calculados explorando todas as faixas de prazo.<br>
+                        <strong>${totalViaveis} cenários cabem</strong> na margem de ${formatBR(margem)}.<br>
+                        <br><strong>📊 Distribuição por Range:</strong>
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>Até 84 meses (35%/20%): ${stats.ate84} cenários</li>
+                            <li>85-96 meses (25%/20%): ${stats['85a96']} cenários</li>
+                            <li>97-149 meses (15%): ${stats['97a149']} cenários</li>
+                            <li>150 meses (10%): ${stats['150']} cenários</li>
+                        </ul>
+                        <br><strong>Mostrando os 20 melhores</strong> (maior prazo + menor desconto).
+                    </div>
+                `;
+
+                top.forEach((c, i) => {
+                    const card = document.createElement('div');
+                    card.className = 'scenario-card';
+                    
+                    if (i === 0 && c.cabeNaMargem) {
+                        card.classList.add('best');
+                    }
+
+                    card.innerHTML = `
+                        ${i === 0 && c.cabeNaMargem ? '<span class="scenario-badge">✨ MELHOR OPÇÃO</span>' : ''}
+                        <span class="range-badge">${c.range}</span>
+                        <div class="scenario-title">Cenário ${i + 1}</div>
+                        <div class="scenario-detail">
+                            <span>Prazo</span>
+                            <strong>${c.prazo} meses</strong>
+                        </div>
+                        <div class="scenario-detail">
+                            <span>Desconto</span>
+                            <strong>${c.desc.toFixed(2)}%</strong>
+                        </div>
+                        <div class="scenario-detail">
+                            <span>Valor Desconto</span>
+                            <strong>${formatBR(c.valorDesc)}</strong>
+                        </div>
+                        <div class="scenario-detail">
+                            <span>Saldo a Negociar</span>
+                            <strong>${formatBR(c.saldoDesc)}</strong>
+                        </div>
+                        <div class="scenario-detail">
+                            <span>Montante Total</span>
+                            <strong>${formatBR(c.montante)}</strong>
+                        </div>
+                        <div class="scenario-detail">
+                            <span>Custo Total</span>
+                            <strong>${formatBR(c.custo)}</strong>
+                        </div>
+                        <div class="scenario-pmt" style="${!c.cabeNaMargem ? 'background: #dc2626;' : ''}">
+                            <div class="scenario-pmt-label">Parcela Mensal (PMT)</div>
+                            <div class="scenario-pmt-value">${formatBR(c.pmt)}</div>
+                            <div style="font-size: 11px; margin-top: 4px;">
+                                ${c.cabeNaMargem ? '✓ Sobram ' + formatBR(c.margemSobrando) + ' de margem' : '⚠ Faltam ' + formatBR(c.valorFaltante)}
+                            </div>
+                        </div>
+                        
+                        ${c.cabeNaMargem ? `
+                        <div class="extra-payment-section">
+                            <div class="extra-payment-title">💰 OPÇÃO: Reforço (Parcelamento do Desconto)</div>
+                            <div class="extra-payment-detail">
+                                <span>Valor a Parcelar:</span>
+                                <strong>${formatBR(c.valorDesc)}</strong>
+                            </div>
+                            <div class="extra-payment-detail">
+                                <span>Em ${c.parcelasReforco}x de:</span>
+                                <strong>${formatBR(c.parcelaReforco)}</strong>
+                            </div>
+                            <div class="extra-payment-detail">
+                                <span>PMT + Reforço:</span>
+                                <strong>${formatBR(c.pmt + c.parcelaReforco)}</strong>
+                            </div>
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #C4A35A;">
+                                <div class="extra-payment-detail">
+                                    <span>Total com Reforço:</span>
+                                    <strong style="font-size: 16px;">${formatBR(c.pmt + c.parcelaReforco)}</strong>
+                                </div>
+                                <div style="font-size: 11px; color: #8B7355; margin-top: 5px; text-align: center;">
+                                    ${c.pmt + c.parcelaReforco <= margem ? '✓ Ainda cabe na margem!' : '⚠ Cliente precisa ter renda para o reforço'}
+                                </div>
+                            </div>
+                        </div>
+                        ` : `
+                        <div class="debito-section">
+                            <div class="debito-title">💳 SOLUÇÃO: Débito em Conta Corrente</div>
+                            <div class="debito-detail">
+                                <span>Valor que Falta:</span>
+                                <strong>${formatBR(c.valorFaltante)}</strong>
+                            </div>
+                            <div class="debito-detail">
+                                <span>Parcelar em ${c.parcelasDebito}x:</span>
+                                <strong>${formatBR(c.parcelaDebito)}</strong>
+                            </div>
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #3b82f6;">
+                                <div class="debito-detail" style="font-weight: 600;">
+                                    <span>Margem Consignável:</span>
+                                    <strong>${formatBR(margem)}</strong>
+                                </div>
+                                <div class="debito-detail" style="font-weight: 600;">
+                                    <span>+ Débito em Conta:</span>
+                                    <strong>${formatBR(c.parcelaDebito)}</strong>
+                                </div>
+                                <div class="debito-detail" style="background: #1e40af; color: white; padding: 8px; margin: 8px -8px -8px; border-radius: 4px;">
+                                    <span>TOTAL MENSAL:</span>
+                                    <strong style="font-size: 16px;">${formatBR(c.pmtComDebito)}</strong>
+                                </div>
+                            </div>
+                            <div style="background: #fff9e6; padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 11px; color: #8B7355;">
+                                ℹ️ O débito em conta facilita o valor que não cabe na margem em até ${c.parcelasDebito}x
+                            </div>
+                        </div>
+                        `}
+                    `;
+                    grid.appendChild(card);
+                });
+
+                document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+
+            } catch (err) {
+                alert('Erro: ' + err.message);
+                console.error(err);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', addInputListeners);
+    </script>
+</body>
+</html>
