@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Calculadora de Renegociação de Dívidas - Sistema inteligente para análise de cenários com débito em conta">
+    <meta name="author" content="Cabanellos">
     <title>Calculadora de Renegociação | Cabanellos</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -46,7 +49,7 @@
         }
         .input-group-2 {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 20px;
             margin-bottom: 20px;
         }
@@ -174,7 +177,7 @@
         }
         .scenarios-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -281,6 +284,52 @@
             font-size: 13px;
             color: #1e3a8a;
         }
+        .calc-desconto-section {
+            background: #fef3c7;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #f59e0b;
+        }
+        .calc-desconto-title {
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 10px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .calc-desconto-input {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            align-items: center;
+        }
+        .calc-desconto-input input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #d97706;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .calc-desconto-input button {
+            background: #d97706;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .calc-desconto-result {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
         .btn-remove {
             background: #dc2626;
             color: white;
@@ -299,6 +348,18 @@
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .input-group {
+                grid-template-columns: 1fr;
+            }
+            .contract-item {
+                grid-template-columns: 1fr;
+            }
+            .scenarios-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -328,15 +389,11 @@
                 </div>
             </div>
             <div class="input-group-2">
-                <div class="form-field">
-                    <label>Parcelas Débito em Conta (meses)</label>
-                    <input type="number" id="parcelas-debito" value="150" min="1" max="150">
-                </div>
                 <div class="info-box">
                     <div class="info-box-title">📋 Entenda as modalidades:</div>
                     <div class="info-box-text">
-                        <strong>Reforço:</strong> Parcela extra opcional para pagar o desconto concedido<br>
-                        <strong>Débito em Conta:</strong> Facilita o valor que não cabe na margem consignável
+                        <strong>Reforço:</strong> Parcela extra opcional para pagar o desconto concedido (você define as parcelas)<br>
+                        <strong>Débito em Conta:</strong> O sistema calcula automaticamente a melhor quantidade de parcelas para facilitar o que não cabe na margem
                     </div>
                 </div>
             </div>
@@ -361,16 +418,16 @@
             
             <div class="info-cards">
                 <div class="info-card">
+                    <div class="info-card-label">Saldo Contábil</div>
+                    <div class="info-card-value" id="info-saldo-contabil">R$ 0,00</div>
+                </div>
+                <div class="info-card">
                     <div class="info-card-label">Margem Disponível</div>
                     <div class="info-card-value" id="info-margem">R$ 0,00</div>
                 </div>
                 <div class="info-card">
                     <div class="info-card-label">PMT Atual Total</div>
                     <div class="info-card-value" id="info-pmt-atual">R$ 0,00</div>
-                </div>
-                <div class="info-card">
-                    <div class="info-card-label">Saldo Total</div>
-                    <div class="info-card-value" id="info-saldo-total">R$ 0,00</div>
                 </div>
             </div>
 
@@ -461,12 +518,37 @@
             return '150 meses';
         }
 
+        function calcularDesconto(cardId, valorDesc, prazo) {
+            const resultDiv = document.getElementById(`result-${cardId}`);
+            const inputParcelas = document.getElementById(`input-parcelas-${cardId}`);
+            const parcelas = parseInt(inputParcelas.value) || prazo;
+            
+            const parcelaDesc = valorDesc / parcelas;
+            
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = `
+                <div class="debito-detail" style="font-weight: 600; margin-bottom: 5px;">
+                    <span>💰 Parcelamento do Desconto</span>
+                </div>
+                <div class="debito-detail">
+                    <span>Valor Total Descontado:</span>
+                    <strong>${formatBR(valorDesc)}</strong>
+                </div>
+                <div class="debito-detail">
+                    <span>Parcelar em ${parcelas}x:</span>
+                    <strong>${formatBR(parcelaDesc)}</strong>
+                </div>
+                <div style="background: #fed7aa; padding: 8px; border-radius: 4px; margin-top: 8px; font-size: 11px; color: #92400e; text-align: center;">
+                    ✓ Débito em conta: ${formatBR(parcelaDesc)}/mês durante ${parcelas} meses
+                </div>
+            `;
+        }
+
         function calcular() {
             try {
                 const liminar = document.getElementById('liminar').value === 'deferido';
                 const margem = parseBR(document.getElementById('margem').value);
                 const parcelasReforco = parseInt(document.getElementById('parcelas-reforco').value) || 12;
-                const parcelasDebito = parseInt(document.getElementById('parcelas-debito').value) || 150;
                 
                 if (margem === 0) {
                     alert('Por favor, informe a margem consignável!');
@@ -492,19 +574,15 @@
                     return;
                 }
 
+                document.getElementById('info-saldo-contabil').textContent = formatBR(saldoTotal);
                 document.getElementById('info-margem').textContent = formatBR(margem);
                 document.getElementById('info-pmt-atual').textContent = formatBR(pmtAtual);
-                document.getElementById('info-saldo-total').textContent = formatBR(saldoTotal);
 
-                const prazos = [
-                    150, 149, 145, 140, 135, 130, 125, 120, 115, 110, 105, 100, 97,
-                    96, 95, 90, 88, 85, 84, 80, 78, 72, 70, 66, 60, 54, 48, 42, 36, 30, 24
-                ];
-                
+                const prazosEstrategicos = [150, 140, 130, 120, 110, 100, 96, 90, 84, 78, 72, 66, 60, 54, 48, 42];
                 const taxa = 0.012;
-                const cenarios = [];
+                const cenariosFinais = [];
 
-                prazos.forEach(prazo => {
+                prazosEstrategicos.forEach(prazo => {
                     const maxDesc = getMaxDesc(prazo, liminar);
                     
                     for (let desc = 0; desc <= maxDesc; desc += 0.005) {
@@ -525,34 +603,63 @@
                         const cabeNaMargem = pmtTotal <= margem;
                         const margemSobrando = cabeNaMargem ? (margem - pmtTotal) : 0;
                         
-                        const valorFaltante = !cabeNaMargem ? (pmtTotal - margem) : 0;
-                        const parcelaDebito = valorFaltante > 0 ? (valorFaltante / parcelasDebito) : 0;
+                        let valorFaltanteMensal = 0;
+                        let valorFaltanteTotal = 0;
+                        let parcelaDebito = 0;
+                        let parcelasDebito = prazo;
+                        let valorTotalDebito = 0;
+                        
+                        if (!cabeNaMargem) {
+                            valorFaltanteMensal = pmtTotal - margem;
+                            valorFaltanteTotal = valorFaltanteMensal * prazo;
+                            valorTotalDebito = valorDesc + valorFaltanteTotal;
+                            parcelasDebito = prazo;
+                            parcelaDebito = valorTotalDebito / parcelasDebito;
+                        }
+                        
                         const pmtComDebito = !cabeNaMargem ? (margem + parcelaDebito) : pmtTotal;
 
-                        cenarios.push({
-                            prazo, desc: desc * 100, saldoOrig, saldoDesc, valorDesc,
-                            pmt: pmtTotal, montante, custo: montante - saldoDesc,
-                            cabeNaMargem, margemSobrando, parcelaReforco: parcelaReforcoCalc,
-                            parcelasReforco, valorFaltante, parcelaDebito, parcelasDebito,
-                            pmtComDebito, range: getRangeName(prazo)
-                        });
+                        if (cabeNaMargem) {
+                            cenariosFinais.push({
+                                prazo, desc: desc * 100, saldoOrig, saldoDesc, valorDesc,
+                                pmt: pmtTotal, montante, custo: montante - saldoDesc,
+                                cabeNaMargem, margemSobrando, parcelaReforco: parcelaReforcoCalc,
+                                parcelasReforco, valorFaltanteMensal: 0, valorFaltanteTotal: 0, 
+                                parcelaDebito, parcelasDebito, valorTotalDebito: 0, 
+                                pmtComDebito, range: getRangeName(prazo)
+                            });
+                            return;
+                        }
                     }
+                    
+                    let pmtTotal = 0, saldoOrig = 0, saldoDesc = 0;
+                    contratos.forEach(c => {
+                        const saldoComDesc = c.saldo * (1 - maxDesc);
+                        const pmtContrato = calcPMT(saldoComDesc, taxa, prazo);
+                        pmtTotal += pmtContrato;
+                        saldoOrig += c.saldo;
+                        saldoDesc += saldoComDesc;
+                    });
+
+                    const montante = pmtTotal * prazo;
+                    const valorDesc = saldoOrig - saldoDesc;
+                    const valorFaltanteMensal = pmtTotal - margem;
+                    const valorFaltanteTotal = valorFaltanteMensal * prazo;
+                    const valorTotalDebito = valorDesc + valorFaltanteTotal;
+                    const parcelasDebito = prazo;
+                    const parcelaDebito = valorTotalDebito / parcelasDebito;
+
+                    cenariosFinais.push({
+                        prazo, desc: maxDesc * 100, saldoOrig, saldoDesc, valorDesc,
+                        pmt: pmtTotal, montante, custo: montante - saldoDesc,
+                        cabeNaMargem: false, margemSobrando: 0, parcelaReforco: 0,
+                        parcelasReforco, valorFaltanteMensal, valorFaltanteTotal, 
+                        parcelaDebito, parcelasDebito, valorTotalDebito, 
+                        pmtComDebito: margem + parcelaDebito, range: getRangeName(prazo)
+                    });
                 });
 
-                cenarios.sort((a, b) => {
-                    if (b.prazo !== a.prazo) return b.prazo - a.prazo;
-                    return a.desc - b.desc;
-                });
-
-                const top = cenarios.slice(0, 20);
-                const totalViaveis = cenarios.filter(c => c.cabeNaMargem).length;
-
-                const stats = {
-                    'ate84': cenarios.filter(c => c.prazo <= 84).length,
-                    '85a96': cenarios.filter(c => c.prazo >= 85 && c.prazo <= 96).length,
-                    '97a149': cenarios.filter(c => c.prazo >= 97 && c.prazo <= 149).length,
-                    '150': cenarios.filter(c => c.prazo === 150).length
-                };
+                const totalViaveis = cenariosFinais.filter(c => c.cabeNaMargem).length;
 
                 document.getElementById('results').style.display = 'block';
                 const grid = document.getElementById('scenarios-grid');
@@ -560,21 +667,15 @@
 
                 document.getElementById('alert-container').innerHTML = `
                     <div class="alert">
-                        <strong>💡 Análise Completa de Todos os Ranges</strong><br>
-                        <strong>${cenarios.length} cenários</strong> calculados explorando todas as faixas de prazo.<br>
+                        <strong>💡 Cenários Inteligentes Selecionados</strong><br>
+                        Mostrando <strong>${cenariosFinais.length} cenários estratégicos</strong> com prazos variados (42 a 150 meses).<br>
                         <strong>${totalViaveis} cenários cabem</strong> na margem de ${formatBR(margem)}.<br>
-                        <br><strong>📊 Distribuição por Range:</strong>
-                        <ul style="margin-left: 20px; margin-top: 5px;">
-                            <li>Até 84 meses (35%/20%): ${stats.ate84} cenários</li>
-                            <li>85-96 meses (25%/20%): ${stats['85a96']} cenários</li>
-                            <li>97-149 meses (15%): ${stats['97a149']} cenários</li>
-                            <li>150 meses (10%): ${stats['150']} cenários</li>
-                        </ul>
-                        <br><strong>Mostrando os 20 melhores</strong> (maior prazo + menor desconto).
+                        <strong>Lógica:</strong> Para cada prazo, mostra o MENOR DESCONTO que cabe na margem.<br>
+                        <strong>Débito em Conta:</strong> Calculado automaticamente no MESMO PRAZO do contrato.
                     </div>
                 `;
 
-                top.forEach((c, i) => {
+                cenariosFinais.forEach((c, i) => {
                     const card = document.createElement('div');
                     card.className = 'scenario-card';
                     
@@ -582,10 +683,16 @@
                         card.classList.add('best');
                     }
 
+                    const cardId = `card-${i}`;
+
                     card.innerHTML = `
                         ${i === 0 && c.cabeNaMargem ? '<span class="scenario-badge">✨ MELHOR OPÇÃO</span>' : ''}
                         <span class="range-badge">${c.range}</span>
                         <div class="scenario-title">Cenário ${i + 1}</div>
+                        <div class="scenario-detail">
+                            <span>Saldo Contábil</span>
+                            <strong>${formatBR(c.saldoOrig)}</strong>
+                        </div>
                         <div class="scenario-detail">
                             <span>Prazo</span>
                             <strong>${c.prazo} meses</strong>
@@ -614,11 +721,11 @@
                             <div class="scenario-pmt-label">Parcela Mensal (PMT)</div>
                             <div class="scenario-pmt-value">${formatBR(c.pmt)}</div>
                             <div style="font-size: 11px; margin-top: 4px;">
-                                ${c.cabeNaMargem ? '✓ Sobram ' + formatBR(c.margemSobrando) + ' de margem' : '⚠ Faltam ' + formatBR(c.valorFaltante)}
+                                ${c.cabeNaMargem ? '✓ Sobram ' + formatBR(c.margemSobrando) + ' de margem' : '⚠ Faltam ' + formatBR(c.valorFaltanteMensal) + '/mês'}
                             </div>
                         </div>
                         
-                        ${c.cabeNaMargem ? `
+                        ${c.cabeNaMargem && c.valorDesc > 0 ? `
                         <div class="extra-payment-section">
                             <div class="extra-payment-title">💰 OPÇÃO: Reforço (Parcelamento do Desconto)</div>
                             <div class="extra-payment-detail">
@@ -629,50 +736,58 @@
                                 <span>Em ${c.parcelasReforco}x de:</span>
                                 <strong>${formatBR(c.parcelaReforco)}</strong>
                             </div>
-                            <div class="extra-payment-detail">
-                                <span>PMT + Reforço:</span>
-                                <strong>${formatBR(c.pmt + c.parcelaReforco)}</strong>
-                            </div>
-                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #C4A35A;">
-                                <div class="extra-payment-detail">
-                                    <span>Total com Reforço:</span>
-                                    <strong style="font-size: 16px;">${formatBR(c.pmt + c.parcelaReforco)}</strong>
-                                </div>
-                                <div style="font-size: 11px; color: #8B7355; margin-top: 5px; text-align: center;">
-                                    ${c.pmt + c.parcelaReforco <= margem ? '✓ Ainda cabe na margem!' : '⚠ Cliente precisa ter renda para o reforço'}
-                                </div>
-                            </div>
                         </div>
-                        ` : `
+                        
+                        <div class="calc-desconto-section">
+                            <div class="calc-desconto-title">
+                                🧮 Facilitar Desconto em Débito
+                            </div>
+                            <div class="calc-desconto-input">
+                                <input type="number" id="input-parcelas-${cardId}" value="${c.prazo}" min="1" max="150" placeholder="Parcelas">
+                                <button onclick="calcularDesconto('${cardId}', ${c.valorDesc}, ${c.prazo})">Calcular</button>
+                            </div>
+                            <div id="result-${cardId}" class="calc-desconto-result"></div>
+                        </div>
+                        ` : ''}
+                        
+                        ${!c.cabeNaMargem ? `
                         <div class="debito-section">
                             <div class="debito-title">💳 SOLUÇÃO: Débito em Conta Corrente</div>
                             <div class="debito-detail">
-                                <span>Valor que Falta:</span>
-                                <strong>${formatBR(c.valorFaltante)}</strong>
+                                <span>Valor do Desconto Concedido:</span>
+                                <strong>${formatBR(c.valorDesc)}</strong>
+                            </div>
+                            <div style="background: #fef2f2; padding: 8px; border-radius: 4px; margin: 8px 0; border-left: 3px solid #ef4444;">
+                                <div class="debito-detail" style="border: none; color: #991b1b;">
+                                    <span>Falta por mês:</span>
+                                    <strong>${formatBR(c.valorFaltanteMensal)}</strong>
+                                </div>
+                                <div class="debito-detail" style="border: none; color: #991b1b;">
+                                    <span>× ${c.prazo} meses =</span>
+                                    <strong>${formatBR(c.valorFaltanteTotal)}</strong>
+                                </div>
+                            </div>
+                            <div style="background: #dbeafe; padding: 8px; border-radius: 4px; margin: 8px 0;">
+                                <div class="debito-detail" style="font-weight: 600; border: none;">
+                                    <span>= TOTAL EM DÉBITO:</span>
+                                    <strong style="color: #1e40af; font-size: 16px;">${formatBR(c.valorTotalDebito)}</strong>
+                                </div>
                             </div>
                             <div class="debito-detail">
                                 <span>Parcelar em ${c.parcelasDebito}x:</span>
                                 <strong>${formatBR(c.parcelaDebito)}</strong>
                             </div>
                             <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #3b82f6;">
-                                <div class="debito-detail" style="font-weight: 600;">
-                                    <span>Margem Consignável:</span>
-                                    <strong>${formatBR(margem)}</strong>
-                                </div>
-                                <div class="debito-detail" style="font-weight: 600;">
-                                    <span>+ Débito em Conta:</span>
-                                    <strong>${formatBR(c.parcelaDebito)}</strong>
-                                </div>
-                                <div class="debito-detail" style="background: #1e40af; color: white; padding: 8px; margin: 8px -8px -8px; border-radius: 4px;">
-                                    <span>TOTAL MENSAL:</span>
-                                    <strong style="font-size: 16px;">${formatBR(c.pmtComDebito)}</strong>
+                                <div class="debito-detail" style="background: #1e40af; color: white; padding: 10px; margin: 0 -8px; border-radius: 4px;">
+                                    <span>Margem + Débito Mensal =</span>
+                                    <strong style="font-size: 18px;">${formatBR(c.pmtComDebito)}/mês</strong>
                                 </div>
                             </div>
                             <div style="background: #fff9e6; padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 11px; color: #8B7355;">
-                                ℹ️ O débito em conta facilita o valor que não cabe na margem em até ${c.parcelasDebito}x
+                                ℹ️ <strong>Débito Total:</strong> ${formatBR(c.valorDesc)} (desconto) + ${formatBR(c.valorFaltanteTotal)} (faltante) = ${formatBR(c.valorTotalDebito)} em ${c.parcelasDebito}x
                             </div>
                         </div>
-                        `}
+                        ` : ''}
                     `;
                     grid.appendChild(card);
                 });
