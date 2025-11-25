@@ -300,22 +300,18 @@
                     </div>
                 </div>
                 <div style="margin-top: 15px;">
-                    <div class="config-title">📊 Limites de Desconto por Prazo</div>
                     <div style="background: white; padding: 12px; border-radius: 8px; font-size: 12px;">
-                        <div id="limites-desc-container">
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
-                                <div><strong>48m:</strong> <input type="text" class="limite-desc" data-prazo="48" value="16,88" style="width: 60px;"> %</div>
-                                <div><strong>60m:</strong> <input type="text" class="limite-desc" data-prazo="60" value="20,98" style="width: 60px;"> %</div>
-                                <div><strong>72m:</strong> <input type="text" class="limite-desc" data-prazo="72" value="24,06" style="width: 60px;"> %</div>
-                                <div><strong>84m:</strong> <input type="text" class="limite-desc" data-prazo="84" value="28,17" style="width: 60px;"> %</div>
-                                <div><strong>96m:</strong> <input type="text" class="limite-desc" data-prazo="96" value="31,25" style="width: 60px;"> %</div>
-                                <div><strong>108m:</strong> <input type="text" class="limite-desc" data-prazo="108" value="33,30" style="width: 60px;"> %</div>
-                                <div><strong>120m:</strong> <input type="text" class="limite-desc" data-prazo="120" value="35,00" style="width: 60px;"> %</div>
-                                <div><strong>150m:</strong> <input type="text" class="limite-desc" data-prazo="150" value="35,00" style="width: 60px;"> %</div>
-                            </div>
-                            <div style="margin-top: 10px; color: #64748b; font-size: 11px;">
-                                💡 Limites máximos de desconto conforme a planilha. Ajuste conforme necessário.
-                            </div>
+                        <div style="color: #64748b;">
+                            <strong>📊 Regras de Desconto Aplicadas:</strong><br><br>
+                            <strong>COM LIMINAR (Deferido):</strong><br>
+                            • Até 84 meses: <strong>35%</strong><br>
+                            • 85-96 meses: <strong>25%</strong><br>
+                            • 97-149 meses: <strong>15%</strong><br>
+                            • 150 meses: <strong>10%</strong><br><br>
+                            <strong>SEM LIMINAR (Indeferido):</strong><br>
+                            • Até 96 meses: <strong>20%</strong><br>
+                            • 97-149 meses: <strong>15%</strong><br>
+                            • 150 meses: <strong>10%</strong>
                         </div>
                     </div>
                 </div>
@@ -420,25 +416,20 @@
             return (taxaMensal * saldo) / (1 - Math.pow(1 + taxaMensal, -prazo));
         }
 
-        function getMaxDesconto(prazo) {
-            // Buscar na tabela configurada
-            const limites = {};
-            document.querySelectorAll('.limite-desc').forEach(input => {
-                const p = parseInt(input.dataset.prazo);
-                limites[p] = parseBR(input.value) / 100;
-            });
-            
-            // Encontrar o limite mais próximo (igual ou menor)
-            let maxDesc = 0;
-            const prazosConfig = Object.keys(limites).map(Number).sort((a, b) => a - b);
-            
-            for (let p of prazosConfig) {
-                if (prazo >= p) {
-                    maxDesc = limites[p];
-                }
+        function getMaxDesconto(prazo, liminar) {
+            // REGRAS OFICIAIS DE DESCONTO
+            if (liminar) {
+                // COM LIMINAR (DEFERIDO)
+                if (prazo <= 84) return 0.35;      // 35%
+                if (prazo <= 96) return 0.25;      // 25%
+                if (prazo <= 149) return 0.15;     // 15%
+                return 0.10;                        // 10% (150+)
+            } else {
+                // SEM LIMINAR (INDEFERIDO)
+                if (prazo <= 96) return 0.20;      // 20%
+                if (prazo <= 149) return 0.15;     // 15%
+                return 0.10;                        // 10% (150+)
             }
-            
-            return maxDesc;
         }
 
         function calcular() {
@@ -447,6 +438,7 @@
                 const margem = parseBR(document.getElementById('margem').value);
                 const prazosStr = document.getElementById('prazos').value;
                 const incrementoDesc = parseInt(document.getElementById('incremento-desc').value) || 5;
+                const liminar = document.getElementById('liminar').value === 'deferido';
                 
                 if (margem === 0) {
                     alert('Informe a margem consignável!');
@@ -482,7 +474,7 @@
                 const cenarios = [];
 
                 prazos.forEach(prazo => {
-                    const maxDesc = getMaxDesconto(prazo);
+                    const maxDesc = getMaxDesconto(prazo, liminar);
                     
                     // Testar descontos de 0% até o máximo
                     for (let descPct = 0; descPct <= maxDesc * 100 + 0.01; descPct += incrementoDesc) {
@@ -496,7 +488,14 @@
                         // VERIFICAR SE CABE NA MARGEM
                         const cabeNaMargem = pmtCalculado <= margem;
                         const margemSobrando = cabeNaMargem ? (margem - pmtCalculado) : 0;
-                        const valorFaltante = !cabeNaMargem ? (pmtCalculado - margem) : 0;
+                        const valorFaltanteMensal = !cabeNaMargem ? (pmtCalculado - margem) : 0;
+                        
+                        // DÉBITO EM CONTA CORRENTE
+                        // Prazo do débito = prazo do consignado (máximo 120 meses)
+                        const prazoDebito = Math.min(120, prazo);
+                        const valorTotalDebito = valorFaltanteMensal * prazo;
+                        const pmtDebito = valorTotalDebito / prazoDebito;
+                        const totalMensal = cabeNaMargem ? pmtCalculado : (margem + pmtDebito);
                         
                         const montante = pmtCalculado * prazo;
                         const custo = montante - saldoComDesconto;
@@ -510,10 +509,15 @@
                             pmtCalculado,
                             cabeNaMargem,
                             margemSobrando,
-                            valorFaltante,
+                            valorFaltanteMensal,
+                            valorTotalDebito,
+                            prazoDebito,
+                            pmtDebito,
+                            totalMensal,
                             montante,
                             custo,
-                            maxDescPrazo: maxDesc * 100
+                            maxDescPrazo: maxDesc * 100,
+                            viavel: true // TODOS são viáveis!
                         });
                     }
                 });
@@ -555,9 +559,10 @@
 
                     card.innerHTML = `
                         ${c.cabeNaMargem && c.desc === 0 ? '<span class="badge badge-best">🎯 SEM DESCONTO</span>' : ''}
-                        <span class="badge badge-prazo">${c.prazo}x</span>
+                        <span class="badge badge-prazo">${c.prazo}x CONSIG</span>
                         <span class="badge badge-desc">${c.desc.toFixed(0)}%</span>
-                        <span class="badge ${c.cabeNaMargem ? 'badge-ok' : 'badge-no'}">${c.cabeNaMargem ? '✓ CABE' : '✗ NÃO CABE'}</span>
+                        ${!c.cabeNaMargem ? `<span class="badge" style="background: #3b82f6; color: white;">${c.prazoDebito}x DÉBITO</span>` : ''}
+                        <span class="badge badge-ok">✓ VIÁVEL</span>
                         
                         <div class="scenario-title">${c.prazo} meses com ${c.desc.toFixed(0)}% de desconto</div>
                         
@@ -586,8 +591,9 @@
                             <strong>${c.maxDescPrazo.toFixed(2)}%</strong>
                         </div>
                         
-                        <div class="result-box ${c.cabeNaMargem ? '' : 'warning'}">
-                            <div class="result-title">${c.cabeNaMargem ? '✅ CABE NA MARGEM' : '⚠️ NÃO CABE NA MARGEM'}</div>
+                        ${c.cabeNaMargem ? `
+                        <div class="result-box">
+                            <div class="result-title">✅ CABE NA MARGEM</div>
                             <div class="result-row">
                                 <span>PMT Calculado:</span>
                                 <strong>${formatBR(c.pmtCalculado)}</strong>
@@ -596,22 +602,50 @@
                                 <span>Margem Disponível:</span>
                                 <strong>${formatBR(margem)}</strong>
                             </div>
-                            ${c.cabeNaMargem ? `
                             <div class="result-row">
                                 <span>Margem Sobrando:</span>
                                 <strong>${formatBR(c.margemSobrando)}</strong>
                             </div>
-                            ` : `
-                            <div class="result-row">
-                                <span>Falta por mês:</span>
-                                <strong>${formatBR(c.valorFaltante)}</strong>
-                            </div>
-                            `}
                             <div class="result-total">
                                 <div style="font-size: 10px; opacity: 0.8;">PARCELA MENSAL</div>
                                 <div class="result-total-value">${formatBR(c.pmtCalculado)}</div>
                             </div>
                         </div>
+                        ` : `
+                        <div class="result-box" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                            <div class="result-title">💳 MARGEM + DÉBITO EM CONTA</div>
+                            <div class="result-row">
+                                <span>PMT Calculado:</span>
+                                <strong>${formatBR(c.pmtCalculado)}</strong>
+                            </div>
+                            <div class="result-row">
+                                <span>Margem Disponível:</span>
+                                <strong>${formatBR(margem)}</strong>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.2); padding: 8px; border-radius: 4px; margin: 8px 0;">
+                                <div style="font-size: 11px; opacity: 0.9; margin-bottom: 6px; text-align: center; font-weight: 600;">DÉBITO EM CONTA CORRENTE</div>
+                                <div class="result-row" style="border: none;">
+                                    <span>Falta por mês:</span>
+                                    <strong>${formatBR(c.valorFaltanteMensal)}</strong>
+                                </div>
+                                <div class="result-row" style="border: none;">
+                                    <span>× ${c.prazo} meses =</span>
+                                    <strong>${formatBR(c.valorTotalDebito)}</strong>
+                                </div>
+                                <div class="result-row" style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 6px; margin-top: 6px; border-bottom: none;">
+                                    <span>Débito em ${c.prazoDebito}x:</span>
+                                    <strong>${formatBR(c.pmtDebito)}</strong>
+                                </div>
+                            </div>
+                            <div class="result-total">
+                                <div style="font-size: 10px; opacity: 0.8;">TOTAL MENSAL</div>
+                                <div class="result-total-value">${formatBR(c.totalMensal)}</div>
+                                <div style="font-size: 11px; opacity: 0.9; margin-top: 4px;">
+                                    Margem ${formatBR(margem)} + Débito ${formatBR(c.pmtDebito)}
+                                </div>
+                            </div>
+                        </div>
+                        `}
                     `;
                     grid.appendChild(card);
                 });
