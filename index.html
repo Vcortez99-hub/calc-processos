@@ -497,6 +497,17 @@
                         const pmtDebito = valorTotalDebito / prazoDebito;
                         const totalMensal = cabeNaMargem ? pmtCalculado : (margem + pmtDebito);
                         
+                        // VALIDAÇÃO DE VIABILIDADE FINANCEIRA
+                        // Limite de débito varia conforme o tamanho da dívida:
+                        // - Dívidas baixas (até 2x margem anual): débito pode ser até 2x margem
+                        // - Dívidas altas (acima de 2x margem anual): débito pode ser até 1.5x margem
+                        const margemAnual = margem * 12;
+                        const dividaBaixa = saldoTotal <= (margemAnual * 2);
+                        const multiplicadorLimite = dividaBaixa ? 2.0 : 1.5;
+                        const limiteDebito = margem * multiplicadorLimite;
+                        const debitoViavel = pmtDebito <= limiteDebito;
+                        const viavel = cabeNaMargem || debitoViavel;
+                        
                         const montante = pmtCalculado * prazo;
                         const custo = montante - saldoComDesconto;
                         
@@ -517,37 +528,45 @@
                             montante,
                             custo,
                             maxDescPrazo: maxDesc * 100,
-                            viavel: true // TODOS são viáveis!
+                            viavel,
+                            limiteDebito,
+                            multiplicadorLimite,
+                            motivoInviavel: !viavel ? `Débito de ${formatBR(pmtDebito)} ultrapassa limite de ${formatBR(limiteDebito)} (${multiplicadorLimite}x margem para dívida ${dividaBaixa ? 'baixa' : 'alta'})` : null
                         });
                     }
                 });
 
-                // Ordenar: primeiro os que cabem, depois por desconto (menor), depois por prazo (maior)
+                // Ordenar: primeiro os viáveis, depois por tipo (cabe na margem), depois por desconto (menor), depois por prazo (maior)
                 cenarios.sort((a, b) => {
+                    if (a.viavel !== b.viavel) return a.viavel ? -1 : 1;
                     if (a.cabeNaMargem !== b.cabeNaMargem) return a.cabeNaMargem ? -1 : 1;
                     if (a.desc !== b.desc) return a.desc - b.desc;
                     return b.prazo - a.prazo;
                 });
 
-                document.getElementById('info-cenarios').textContent = cenarios.length;
+                const cenariosViaveis = cenarios.filter(c => c.viavel).length;
+                const cenariosInviaveis = cenarios.length - cenariosViaveis;
+
+                document.getElementById('info-cenarios').textContent = cenariosViaveis;
                 document.getElementById('results').style.display = 'block';
                 const grid = document.getElementById('scenarios-grid');
                 grid.innerHTML = '';
 
-                const cenariosViáveis = cenarios.filter(c => c.cabeNaMargem).length;
+                const margemAnual = margem * 12;
+                const dividaBaixa = saldoTotal <= (margemAnual * 2);
 
                 document.getElementById('alert-container').innerHTML = `
                     <div class="alert">
-                        <strong>🎯 ${cenarios.length} Cenários Calculados</strong><br>
-                        <strong>${cenariosViáveis} cenários cabem</strong> na margem de ${formatBR(margem)}.<br>
-                        <strong>Taxa:</strong> ${(taxaInput * 100).toFixed(2)}% a.m. | 
+                        <strong>🎯 ${cenariosViaveis} Cenários Viáveis Encontrados</strong>
+                        ${cenariosInviaveis > 0 ? `<br><span style="color: #64748b; font-size: 12px;">(${cenariosInviaveis} cenários filtrados por inviabilidade financeira)</span>` : ''}
+                        <br><strong>Taxa:</strong> ${(taxaInput * 100).toFixed(2)}% a.m. | 
                         <strong>Prazos:</strong> ${prazos.join(', ')} meses | 
                         <strong>Incremento:</strong> ${incrementoDesc}%
                     </div>
                 `;
 
-                // Mostrar cenários
-                const cenariosExibir = cenarios.slice(0, 100);
+                // Mostrar apenas cenários viáveis
+                const cenariosExibir = cenarios.filter(c => c.viavel).slice(0, 100);
 
                 cenariosExibir.forEach((c, i) => {
                     const card = document.createElement('div');
@@ -562,7 +581,7 @@
                         <span class="badge badge-prazo">${c.prazo}x CONSIG</span>
                         <span class="badge badge-desc">${c.desc.toFixed(0)}%</span>
                         ${!c.cabeNaMargem ? `<span class="badge" style="background: #3b82f6; color: white;">${c.prazoDebito}x DÉBITO</span>` : ''}
-                        <span class="badge badge-ok">✓ VIÁVEL</span>
+                        <span class="badge ${c.viavel ? 'badge-ok' : 'badge-no'}">${c.viavel ? '✓ VIÁVEL' : '✗ INVIÁVEL'}</span>
                         
                         <div class="scenario-title">${c.prazo} meses com ${c.desc.toFixed(0)}% de desconto</div>
                         
