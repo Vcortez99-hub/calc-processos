@@ -275,9 +275,9 @@
         <div class="config-section">
             <div class="config-title" style="cursor: pointer;" onclick="toggleConfig()">
                 ⚙️ Configurações Avançadas 
-                <span id="config-toggle" style="font-size: 12px; opacity: 0.7;">(clique para expandir)</span>
+                <span id="config-toggle" style="font-size: 12px; opacity: 0.7;">(clique para recolher)</span>
             </div>
-            <div id="config-content" style="display: none;">
+            <div id="config-content" style="display: block;">
                 <div class="config-grid">
                     <div class="config-item">
                         <label>Taxa Mensal (%)</label>
@@ -318,21 +318,30 @@
             </div>
         </div>
 
-        <div class="input-section">
+        <div class="input-section" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);">
+            <div style="background: #f59e0b; color: white; padding: 8px 15px; margin: -15px -15px 15px -15px; border-radius: 8px 8px 0 0; font-weight: 600;">
+                ⭐ Dados Principais - Preencha aqui
+            </div>
             <div class="input-grid">
                 <div class="form-field">
-                    <label>Margem Consignável (R$)</label>
-                    <input type="text" id="margem" placeholder="Ex: 1.536,87">
+                    <label style="font-weight: 600; color: #92400e;">Margem Consignável (R$) *</label>
+                    <input type="text" id="margem" placeholder="Ex: 1.536,87" style="border: 2px solid #f59e0b; font-size: 16px; font-weight: 600;">
                 </div>
                 <div class="form-field">
-                    <label>Renda (R$) - Opcional</label>
+                    <label style="color: #92400e;">Renda (R$) - Opcional</label>
                     <input type="text" id="renda" placeholder="Ex: 5.219,10">
                 </div>
             </div>
         </div>
 
-        <div class="contracts-section">
-            <div class="section-title">📋 Contratos</div>
+        <div class="contracts-section" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);">
+            <div style="background: #f59e0b; color: white; padding: 8px 15px; margin: -15px -15px 15px -15px; border-radius: 8px 8px 0 0; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+                <span>📋 Contratos - Adicione os saldos</span>
+                <button onclick="adicionarContrato()" style="background: white; color: #f59e0b; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                    + Adicionar Contrato
+                </button>
+            </div>
+            <div class="section-title" style="display: none;">📋 Contratos</div>
             <div id="contracts-container">
                 <div class="contract-item">
                     <input type="text" placeholder="Saldo Contábil (R$)" class="contract-saldo">
@@ -542,6 +551,7 @@
                         const custo = montante - saldoComDescontoReal;
                         
                         // VALIDAÇÃO DE VIABILIDADE FINANCEIRA
+                        // VALIDAÇÃO DE VIABILIDADE FINANCEIRA
                         const margemAnual = margem * 12;
                         const dividaBaixa = saldoTotal <= (margemAnual * 2);
                         const multiplicadorLimite = dividaBaixa ? 2.0 : 1.5;
@@ -632,7 +642,7 @@
                         <span class="badge badge-prazo">${c.prazo}x CONSIG</span>
                         <span class="badge badge-desc">${c.desc.toFixed(0)}%</span>
                         ${!c.cabeNaMargem ? `<span class="badge" style="background: #3b82f6; color: white;">${c.prazoDebito}x DÉBITO</span>` : ''}
-                        <span class="badge ${c.viavel ? 'badge-ok' : 'badge-no'}">${c.viavel ? '✓ VIÁVEL' : '✗ INVIÁVEL'}</span>
+                        ${c.cabeNaMargem ? `<span class="badge ${c.viavel ? 'badge-ok' : 'badge-no'}">${c.viavel ? '✓ VIÁVEL' : '✗ INVIÁVEL'}</span>` : ''}
                         
                         <div class="scenario-title">${c.prazo} meses com ${c.desc.toFixed(0)}% de desconto</div>
                         
@@ -697,6 +707,15 @@
                         ` : `
                         <div class="result-box" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
                             <div class="result-title">💳 MARGEM + DÉBITO EM CONTA</div>
+                            
+                            <div style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); padding: 8px; border-radius: 6px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 20px;">⚠️</span>
+                                <div style="flex: 1;">
+                                    <div style="font-size: 10px; opacity: 0.9; font-weight: 600;">ATENÇÃO: REQUER REFORÇO</div>
+                                    <div style="font-size: 12px; opacity: 0.95;">Este cenário não cabe 100% na margem</div>
+                                </div>
+                            </div>
+                            
                             <div class="result-row">
                                 <span>PMT Total Calculado:</span>
                                 <strong>${formatBR(c.pmtCalculado)}</strong>
@@ -721,14 +740,15 @@
                                     <span>Débito mensal:</span>
                                     <strong>${formatBR(c.valorFaltanteMensal)}</strong>
                                 </div>
-                                <div class="result-row" style="border: none;">
-                                    <span>× ${c.prazo} meses =</span>
+                                <div class="result-row" style="border: none; padding-top: 6px; margin-top: 6px;">
+                                    <span>Total acumulado (${c.prazoDebito} meses):</span>
                                     <strong>${formatBR(c.valorTotalDebito)}</strong>
                                 </div>
-                                <div class="result-row" style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 6px; margin-top: 6px; border-bottom: none;">
-                                    <span>Financiado em ${c.prazoDebito}x:</span>
-                                    <strong>${formatBR(c.pmtDebito)}</strong>
+                                ${c.prazoDebito === 120 && c.prazo > 120 ? `
+                                <div style="font-size: 10px; opacity: 0.8; margin-top: 6px; text-align: center; font-style: italic;">
+                                    ⚠️ Prazo máximo de débito limitado a 120 meses
                                 </div>
+                                ` : ''}
                             </div>
                             <div class="result-total">
                                 <div style="font-size: 10px; opacity: 0.8;">PARCELA MENSAL TOTAL</div>
