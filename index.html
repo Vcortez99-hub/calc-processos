@@ -543,10 +543,20 @@
                         
                         // Débito em conta mensal (não é o reforço!)
                         const prazoDebito = Math.min(120, prazo);
-                        const valorTotalDebito = valorFaltanteMensal * prazo;
-                        const pmtDebito = valorTotalDebito / prazoDebito;
+                        let pvConsignado;
+                        if (taxaInput === 0) {
+                            pvConsignado = Math.min(saldoComDescontoReal, pmtConsignado * prazo);
+                        } else {
+                            pvConsignado = Math.min(
+                                saldoComDescontoReal,
+                                pmtConsignado * ((1 - Math.pow(1 + taxaInput, -prazo)) / taxaInput)
+                            );
+                        }
+                        const pvDebito = Math.max(0, saldoComDescontoReal - pvConsignado);
+                        const pmtDebito = pvDebito > 0 ? calcPMT(pvDebito, taxaInput, prazoDebito) : 0;
+                        const valorTotalDebito = pmtDebito * prazoDebito;
                         
-                        const totalMensal = pmtComDescontoReal;
+                        const totalMensal = cabeNaMargem ? pmtComDescontoReal : (pmtConsignado + pmtDebito);
                         const montante = pmtComDescontoReal * prazo;
                         const custo = montante - saldoComDescontoReal;
                         
@@ -728,7 +738,7 @@
                                 </div>
                                 <div class="result-row" style="border: none;">
                                     <span>Pagamento em Conta Corrente:</span>
-                                    <strong>${formatBR(c.valorFaltanteMensal)}</strong>
+                                    <strong>${formatBR(c.pmtDebito)}</strong>
                                 </div>
                                 <div style="font-size: 10px; opacity: 0.7; margin-top: 4px; font-style: italic;">
                                     ${c.pmtConsignado < margem ? `💰 Margem restante: ${formatBR(margem - c.pmtConsignado)}` : '(usa margem completa)'}
@@ -738,7 +748,7 @@
                                 <div style="font-size: 11px; opacity: 0.9; margin-bottom: 6px; text-align: center; font-weight: 600;">FINANCIAMENTO DO DÉBITO</div>
                                 <div class="result-row" style="border: none;">
                                     <span>Débito mensal:</span>
-                                    <strong>${formatBR(c.valorFaltanteMensal)}</strong>
+                                    <strong>${formatBR(c.pmtDebito)}</strong>
                                 </div>
                                 <div class="result-row" style="border: none; padding-top: 6px; margin-top: 6px;">
                                     <span>Total acumulado (${c.prazoDebito} meses):</span>
@@ -754,7 +764,7 @@
                                 <div style="font-size: 10px; opacity: 0.8;">PARCELA MENSAL TOTAL</div>
                                 <div class="result-total-value">${formatBR(c.totalMensal)}</div>
                                 <div style="font-size: 11px; opacity: 0.9; margin-top: 4px;">
-                                    Consignado ${formatBR(c.pmtConsignado)} + Débito ${formatBR(c.valorFaltanteMensal)}
+                                    Consignado ${formatBR(c.pmtConsignado)} + Débito ${formatBR(c.pmtDebito)}
                                 </div>
                             </div>
                         </div>
@@ -797,7 +807,8 @@ Taxa: ${taxa.toFixed(2)}% a.m.
                 if (!dados.cabeNaMargem) {
                     // Proposta com débito em conta
                     detalhamento += `Operação consignada em ${dados.prazo}x de ${formatBR(dados.pmtConsignado)} + operação cobrada mediante débito em conta em ${dados.prazoDebito}x de ${formatBR(dados.pmtDebito)}\n`;
-                    detalhamento += `Taxa de ${taxa.toFixed(2)}% a.m.\n\n`;
+                        detalhamento += `Parcela mensal total: ${formatBR(dados.pmtConsignado + dados.pmtDebito)}\n`;
+                        detalhamento += `Taxa de ${taxa.toFixed(2)}% a.m.\n\n`;
                 } else {
                     // Proposta só consignado
                     detalhamento += `Operação consignada em ${dados.prazo}x de ${formatBR(dados.pmtConsignado)}\n`;
