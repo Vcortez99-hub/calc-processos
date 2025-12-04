@@ -263,6 +263,19 @@
             .contract-item { grid-template-columns: 1fr; }
             .scenarios-grid { grid-template-columns: 1fr; }
         }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal { background: white; border-radius: 12px; width: 90%; max-width: 900px; max-height: 80vh; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: linear-gradient(135deg, #C4A35A 0%, #8B7355 100%); color: white; }
+        .modal-body { padding: 16px; overflow: auto; background: #f8f9fa; }
+        .modal-close { background: transparent; border: none; color: white; font-size: 18px; cursor: pointer; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; background: #f3f4f6; }
+        .btn-detail { background: #C4A35A; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; margin-top: 10px; }
+        .btn-detail:hover { background: #B39350; }
+        .btn-primary { background: #10b981; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .btn-export { background: #3b82f6; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { padding: 8px; border-bottom: 1px solid #e5e7eb; text-align: right; }
+        .table th:first-child, .table td:first-child { text-align: left; }
     </style>
 </head>
 <body>
@@ -379,6 +392,19 @@
             <div id="alert-container"></div>
             <div class="scenarios-grid" id="scenarios-grid"></div>
         </div>
+        <div id="parcelas-modal" class="modal-overlay" style="display: none;">
+            <div class="modal">
+                <div class="modal-header">
+                    <div id="modal-title" style="font-weight:700;"></div>
+                    <button class="modal-close" onclick="fecharParcelas()">✕</button>
+                </div>
+                <div class="modal-body" id="modal-body"></div>
+                <div class="modal-actions">
+                    <button class="btn-export" onclick="exportarParcelas()">Exportar CSV</button>
+                    <button class="btn-primary" onclick="fecharParcelas()">Fechar</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -445,6 +471,7 @@
             try {
                 const taxaInput = parseBR(document.getElementById('taxa').value) / 100;
                 const margem = parseBR(document.getElementById('margem').value);
+                window.margemAtual = margem;
                 const prazosStr = document.getElementById('prazos').value;
                 const incrementoDesc = parseInt(document.getElementById('incremento-desc').value) || 5;
                 const liminar = document.getElementById('liminar').value === 'deferido';
@@ -511,30 +538,18 @@
                         let valorReforcoDebito = 0;
                         
                         if (!cabeNaMargem) {
-                            // NÃO CABE: Buscar desconto FICTÍCIO que faz caber
-                            
                             let pmtTeste = pmtComDescontoReal;
-                            descFicticio = descReal;
-                            
-                            // Aumenta desconto fictício até caber
-                            while (pmtTeste > margem && descFicticio < 0.70) {
-                                descFicticio += 0.01;
-                                saldoComDescontoFicticio = saldoTotal * (1 - descFicticio);
+                            let d = descReal;
+                            const step = 0.005;
+                            while (pmtTeste > margem && d <= 0.95) {
+                                d += step;
+                                saldoComDescontoFicticio = saldoTotal * (1 - d);
                                 pmtTeste = calcPMT(saldoComDescontoFicticio, taxaInput, prazo);
                             }
-                            
-                            if (pmtTeste <= margem) {
-                                // Encontrou desconto fictício que cabe
-                                valorDescontoFicticio = saldoTotal * descFicticio;
-                                pmtConsignado = pmtTeste;
-                                
-                                // DIFERENÇA entre desconto fictício e real = REFORÇO/DÉBITO
-                                valorReforcoDebito = valorDescontoFicticio - valorDescontoReal;
-                            } else {
-                                // Não encontrou, usa margem
-                                pmtConsignado = margem;
-                                valorReforcoDebito = saldoComDescontoReal - saldoComDescontoFicticio;
-                            }
+                            pmtConsignado = Math.min(pmtTeste, margem);
+                            descFicticio = d;
+                            valorDescontoFicticio = saldoTotal * descFicticio;
+                            valorReforcoDebito = Math.max(0, valorDescontoFicticio - valorDescontoReal);
                         }
                         
                         // Valores para exibição
@@ -607,13 +622,10 @@
                     return b.prazo - a.prazo;
                 });
 
-                const cenariosViaveis = cenarios.filter(c => c.viavel).length;
-                const cenariosInviaveis = cenarios.length - cenariosViaveis;
-                
-                // Salvar cenários viáveis globalmente para usar no detalhamento
-                window.cenariosCalculados = cenarios.filter(c => c.viavel);
+                const totalCenarios = cenarios.length;
+                window.cenariosCalculados = cenarios;
 
-                document.getElementById('info-cenarios').textContent = cenariosViaveis;
+                document.getElementById('info-cenarios').textContent = totalCenarios;
                 document.getElementById('results').style.display = 'block';
                 const grid = document.getElementById('scenarios-grid');
                 grid.innerHTML = '';
@@ -624,8 +636,7 @@
                 document.getElementById('alert-container').innerHTML = `
                     <div class="alert" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                         <div style="flex: 1; min-width: 300px;">
-                            <strong>🎯 ${cenariosViaveis} Cenários Viáveis Encontrados</strong>
-                            ${cenariosInviaveis > 0 ? `<br><span style="color: #64748b; font-size: 12px;">(${cenariosInviaveis} cenários filtrados por inviabilidade financeira)</span>` : ''}
+                            <strong>📊 Cenários Gerados:</strong> ${totalCenarios}
                             <br><strong>Taxa:</strong> ${(taxaInput * 100).toFixed(2)}% a.m. | 
                             <strong>Prazos:</strong> ${prazos.join(', ')} meses | 
                             <strong>Incremento:</strong> ${incrementoDesc}%
@@ -636,8 +647,9 @@
                     </div>
                 `;
 
-                // Mostrar apenas cenários viáveis
-                const cenariosExibir = cenarios.filter(c => c.viavel).slice(0, 100);
+                // Mostrar todos os cenários (viáveis e inviáveis)
+                const cenariosExibir = cenarios.slice(0, 100);
+                window.cenariosExibir = cenariosExibir;
 
                 cenariosExibir.forEach((c, i) => {
                     const card = document.createElement('div');
@@ -652,9 +664,9 @@
                         <span class="badge badge-prazo">${c.prazo}x CONSIG</span>
                         <span class="badge badge-desc">${c.desc.toFixed(0)}%</span>
                         ${!c.cabeNaMargem ? `<span class="badge" style="background: #3b82f6; color: white;">${c.prazoDebito}x DÉBITO</span>` : ''}
-                        ${c.cabeNaMargem ? `<span class="badge ${c.viavel ? 'badge-ok' : 'badge-no'}">${c.viavel ? '✓ VIÁVEL' : '✗ INVIÁVEL'}</span>` : ''}
                         
                         <div class="scenario-title">${c.prazo} meses com ${c.desc.toFixed(0)}% de desconto</div>
+                        ${!c.cabeNaMargem ? `<div style="font-size: 11px; color: #dc2626; margin-bottom: 6px;">Motivo: ${c.motivoInviavel}</div>` : ''}
                         
                         <div class="scenario-detail">
                             <span>Saldo Original</span>
@@ -770,6 +782,11 @@
                         </div>
                         `}
                     `;
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-detail';
+                    btn.textContent = 'Ver Parcelas';
+                    btn.onclick = () => mostrarParcelas(i);
+                    card.appendChild(btn);
                     grid.appendChild(card);
                 });
 
@@ -875,6 +892,73 @@ Taxa: ${taxa.toFixed(2)}% a.m.
             }).catch(err => {
                 alert('❌ Erro ao copiar. Tente selecionar o texto manualmente.');
             });
+        }
+        function mostrarParcelas(index) {
+            const c = window.cenariosExibir[index];
+            if (!c) return;
+            const consLen = c.prazo;
+            const debLen = c.cabeNaMargem ? 0 : c.prazoDebito;
+            const maxMeses = Math.max(consLen, debLen);
+            const totalCons = c.pmtConsignado * consLen;
+            const totalDeb = c.cabeNaMargem ? 0 : c.pmtDebito * debLen;
+            let rows = '';
+            for (let m = 1; m <= maxMeses; m++) {
+                const cons = m <= consLen ? c.pmtConsignado : 0;
+                const deb = (!c.cabeNaMargem && m <= debLen) ? c.pmtDebito : 0;
+                const tot = cons + deb;
+                rows += `<tr><td style="text-align:left;">${m}</td><td>${formatBR(cons)}</td><td>${formatBR(deb)}</td><td>${formatBR(tot)}</td></tr>`;
+            }
+            const resumo = `
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-bottom: 12px;">
+                    <div class="info-card"><div class="info-card-label">Saldo devedor consignado</div><div class="info-card-value">${formatBR(c.saldoComDesconto)}</div></div>
+                    <div class="info-card"><div class="info-card-label">Parcela consignada (mês)</div><div class="info-card-value">${formatBR(c.pmtConsignado)}</div></div>
+                    <div class="info-card"><div class="info-card-label">Reforço (débito) total</div><div class="info-card-value">${formatBR(totalDeb)}</div></div>
+                    <div class="info-card"><div class="info-card-label">Montante total a pagar</div><div class="info-card-value">${formatBR(totalCons + totalDeb)}</div></div>
+                </div>
+            `;
+            document.getElementById('modal-title').innerHTML = `Parcelas — ${c.prazo}x Consignado ${c.desc.toFixed(0)}%${!c.cabeNaMargem ? ` + ${c.prazoDebito}x Débito` : ''}`;
+            document.getElementById('modal-body').innerHTML = `
+                ${resumo}
+                <div style="max-height:60vh; overflow:auto;">
+                    <table class="table">
+                        <thead><tr><th>Mês</th><th>Consignado</th><th>Débito</th><th>Total</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                        <tfoot>
+                            <tr><th style="text-align:left;">Totais</th><th>${formatBR(totalCons)}</th><th>${formatBR(totalDeb)}</th><th>${formatBR(totalCons + totalDeb)}</th></tr>
+                        </tfoot>
+                    </table>
+                </div>
+            `;
+            document.getElementById('parcelas-modal').style.display = 'flex';
+            window.parcelasAtual = { index, maxMeses, consLen, debLen, pmtCons: c.pmtConsignado, pmtDeb: c.cabeNaMargem ? 0 : c.pmtDebito };
+        }
+        function fecharParcelas() {
+            document.getElementById('parcelas-modal').style.display = 'none';
+            window.parcelasAtual = null;
+        }
+        function exportarParcelas() {
+            const pa = window.parcelasAtual;
+            if (!pa) return;
+            const c = window.cenariosExibir[pa.index];
+            const max = pa.maxMeses;
+            let csv = 'Mes;Consignado;Debito;Total\n';
+            for (let m = 1; m <= max; m++) {
+                const cons = m <= pa.consLen ? pa.pmtCons : 0;
+                const deb = m <= pa.debLen ? pa.pmtDeb : 0;
+                const tot = cons + deb;
+                const f = (v) => v.toFixed(2).replace('.', ',');
+                csv += `${m};${f(cons)};${f(deb)};${f(tot)}\n`;
+            }
+            csv += `Totais;${(pa.pmtCons * pa.consLen).toFixed(2).replace('.', ',')};${(pa.pmtDeb * pa.debLen).toFixed(2).replace('.', ',')};${((pa.pmtCons * pa.consLen) + (pa.pmtDeb * pa.debLen)).toFixed(2).replace('.', ',')}\n`;
+            const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `parcelas_${c.prazo}x_${c.desc.toFixed(0)}pct.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
     </script>
 </body>
