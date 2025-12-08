@@ -520,7 +520,7 @@
                     const maxDesc = getMaxDesconto(prazo, liminar);
                     
                     // Testar descontos de 0% até o máximo
-                    for (let descPct = 0; descPct <= maxDesc * 100 + 0.01; descPct += 1) {
+                    for (let descPct = 0; descPct <= maxDesc * 100 + 0.01; descPct += incrementoDesc) {
                         const descReal = descPct / 100;
                         const valorDescontoReal = saldoTotal * descReal;
                         const saldoComDescontoReal = saldoTotal - valorDescontoReal;
@@ -536,6 +536,21 @@
                         let valorDescontoFicticio = valorDescontoReal;
                         let pmtConsignado = pmtComDescontoReal;
                         let valorReforcoDebito = 0;
+
+                        if (!cabeNaMargem) {
+                            let pmtTeste = pmtComDescontoReal;
+                            let d = descReal;
+                            const step = 0.005;
+                            while (pmtTeste > margem && d <= 0.95) {
+                                d += step;
+                                saldoComDescontoFicticio = saldoTotal * (1 - d);
+                                pmtTeste = calcPMT(saldoComDescontoFicticio, taxaInput, prazo);
+                            }
+                            pmtConsignado = Math.min(pmtTeste, margem);
+                            descFicticio = d;
+                            valorDescontoFicticio = saldoTotal * descFicticio;
+                            valorReforcoDebito = Math.max(0, valorDescontoFicticio - valorDescontoReal);
+                        }
                         
                         // Valores para exibição
                         const margemSobrando = cabeNaMargem ? (margem - pmtConsignado) : 0;
@@ -624,7 +639,7 @@
                             <strong>📊 Cenários Gerados:</strong> ${totalCenarios}
                             <br><strong>Taxa:</strong> ${(taxaInput * 100).toFixed(2)}% a.m. | 
                             <strong>Prazos:</strong> ${prazos.join(', ')} meses | 
-                            <strong>Incremento:</strong> 1%
+                            <strong>Incremento:</strong> ${incrementoDesc}%
                         </div>
                         <button onclick="gerarDetalhamento()" style="background: linear-gradient(135deg, #b8860b 0%, #967209 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(184, 134, 11, 0.3); white-space: nowrap;">
                             📋 Ver Detalhamento
