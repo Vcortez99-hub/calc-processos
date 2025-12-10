@@ -588,9 +588,10 @@
                         const valorFaltanteMensal = !cabeNaMargem ? (pmtComDescontoReal - pmtConsignado) : 0;
 
                         // Débito em conta mensal - SEMPRE limitado a 120 meses
+                        // Financiar em 120x o valor total que falta ao longo de TODOS os meses do consignado
                         const prazoDebito = Math.min(120, prazo);
-                        const valorTotalDebito = valorFaltanteMensal * prazoDebito;
-                        const pmtDebito = valorFaltanteMensal;
+                        const valorTotalDebito = valorFaltanteMensal * prazo; // Total que falta em TODOS os meses
+                        const pmtDebito = valorTotalDebito / prazoDebito; // Dividir esse total em 120 parcelas
                         
                         const totalMensal = pmtComDescontoReal;
                         const montante = pmtComDescontoReal * prazo;
@@ -724,9 +725,9 @@
                             <span>Desconto Real (${c.desc.toFixed(0)}%)</span>
                             <strong style="color: #dc2626;">- ${formatBR(c.valorDesconto)}</strong>
                         </div>
-                        ${!c.cabeNaMargem && c.descReal > 0 ? `
+                        ${!c.cabeNaMargem ? `
                         <div class="scenario-detail" style="background: rgba(255, 193, 7, 0.1); padding: 6px; border-radius: 4px; border-left: 3px solid #fbbf24;">
-                            <span style="font-size: 11px;">📊 Valor de Desconto: ${c.descFicticio.toFixed(0)}%</span>
+                            <span style="font-size: 11px;">📊 Desconto Fictício: ${c.descFicticio.toFixed(0)}%</span>
                             <strong style="font-size: 12px;">${formatBR(c.valorDescontoFicticio)}</strong>
                         </div>
                         <div class="scenario-detail" style="background: rgba(239, 68, 68, 0.1); padding: 6px; border-radius: 4px; border-left: 3px solid #dc2626;">
