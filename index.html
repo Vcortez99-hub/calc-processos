@@ -586,23 +586,18 @@
                         // Valores para exibição
                         const margemSobrando = cabeNaMargem ? (margem - pmtConsignado) : 0;
                         const valorFaltanteMensal = !cabeNaMargem ? (pmtComDescontoReal - pmtConsignado) : 0;
-                        
-                        // Débito em conta mensal (não é o reforço!)
+
+                        // Débito em conta mensal - SEMPRE limitado a 120 meses
                         const prazoDebito = Math.min(120, prazo);
-                        const valorTotalDebito = valorFaltanteMensal * prazo;
-                        const pmtDebito = valorTotalDebito / prazoDebito;
+                        const valorTotalDebito = valorFaltanteMensal * prazoDebito;
+                        const pmtDebito = valorFaltanteMensal;
                         
                         const totalMensal = pmtComDescontoReal;
                         const montante = pmtComDescontoReal * prazo;
                         const custo = montante - saldoComDescontoReal;
-                        
-                        // VALIDAÇÃO DE VIABILIDADE FINANCEIRA
-                        const margemAnual = margem * 12;
-                        const dividaBaixa = saldoTotal <= (margemAnual * 2);
-                        const multiplicadorLimite = dividaBaixa ? 2.0 : 1.5;
-                        const limiteDebito = margem * multiplicadorLimite;
-                        const debitoViavel = pmtDebito <= limiteDebito;
-                        const viavel = cabeNaMargem || debitoViavel;
+
+                        // Cenário é viável APENAS se cabe 100% na margem (sem reforço)
+                        const viavel = cabeNaMargem;
                         
                         cenarios.push({
                             prazo,
@@ -626,55 +621,84 @@
                             montante,
                             custo,
                             maxDescPrazo: maxDesc * 100,
-                            viavel,
-                            limiteDebito,
-                            multiplicadorLimite,
-                            motivoInviavel: !viavel ? `Débito de ${formatBR(pmtDebito)} ultrapassa limite de ${formatBR(limiteDebito)} (${multiplicadorLimite}x margem para dívida ${dividaBaixa ? 'baixa' : 'alta'})` : null
+                            viavel
                         });
                     }
                 });
 
-                // Ordenar: primeiro os viáveis, depois por tipo (cabe na margem), depois por desconto (menor), depois por prazo (maior)
+                // Ordenar: primeiro os viáveis (cabe na margem), depois por desconto (menor), depois por prazo (maior)
                 cenarios.sort((a, b) => {
                     if (a.viavel !== b.viavel) return a.viavel ? -1 : 1;
-                    if (a.cabeNaMargem !== b.cabeNaMargem) return a.cabeNaMargem ? -1 : 1;
                     if (a.desc !== b.desc) return a.desc - b.desc;
                     return b.prazo - a.prazo;
                 });
 
                 const cenariosViaveis = cenarios.filter(c => c.viavel).length;
-                const cenariosInviaveis = cenarios.length - cenariosViaveis;
-                
-                // Salvar cenários viáveis globalmente para usar no detalhamento
-                window.cenariosCalculados = cenarios.filter(c => c.viavel);
+                const cenariosComReforco = cenarios.filter(c => !c.viavel).length;
 
-                document.getElementById('info-cenarios').textContent = cenariosViaveis;
+                // Salvar TODOS os cenários globalmente (não apenas viáveis)
+                window.cenariosCalculados = cenarios;
+
+                document.getElementById('info-cenarios').textContent = cenarios.length;
                 document.getElementById('results').style.display = 'block';
                 const grid = document.getElementById('scenarios-grid');
                 grid.innerHTML = '';
 
-                const margemAnual = margem * 12;
-                const dividaBaixa = saldoTotal <= (margemAnual * 2);
-
                 document.getElementById('alert-container').innerHTML = `
                     <div class="alert" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                         <div style="flex: 1; min-width: 300px;">
-                            <strong>🎯 ${cenariosViaveis} Cenários Viáveis Encontrados</strong>
-                            ${cenariosInviaveis > 0 ? `<br><span style="color: #64748b; font-size: 12px;">(${cenariosInviaveis} cenários filtrados por inviabilidade financeira)</span>` : ''}
-                            <br><strong>Taxa:</strong> ${(taxaInput * 100).toFixed(2)}% a.m. | 
-                            <strong>Prazos:</strong> ${prazos.join(', ')} meses | 
+                            <strong>📊 ${cenarios.length} Cenários Gerados</strong>
+                            <br><span style="color: #059669; font-weight: 600;">${cenariosViaveis} sem reforço</span> |
+                            <span style="color: #2563eb; font-weight: 600;">${cenariosComReforco} com débito em conta</span>
+                            <br><strong>Taxa:</strong> ${(taxaInput * 100).toFixed(2)}% a.m. |
+                            <strong>Prazos:</strong> ${prazos.join(', ')} meses |
                             <strong>Incremento:</strong> ${incrementoDesc}%
                         </div>
                         <button onclick="gerarDetalhamento()" style="background: linear-gradient(135deg, #b8860b 0%, #967209 100%); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px rgba(184, 134, 11, 0.3); white-space: nowrap;">
                             📋 Ver Detalhamento
                         </button>
                     </div>
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.08);">
+                        <div style="font-weight: 600; margin-bottom: 10px; color: #2C3E50;">🔍 Filtrar Cenários</div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <button onclick="filtrarCenarios('todos')" class="btn-filtro" data-filtro="todos" style="background: #C4A35A; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                                Todos (${cenarios.length})
+                            </button>
+                            ${prazos.map(p => {
+                                const count = cenarios.filter(c => c.prazo === p).length;
+                                return `<button onclick="filtrarCenarios(${p})" class="btn-filtro" data-filtro="${p}" style="background: #e2e8f0; color: #334155; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                                    ${p}x (${count})
+                                </button>`;
+                            }).join('')}
+                            <button onclick="filtrarCenarios('viavel')" class="btn-filtro" data-filtro="viavel" style="background: #e2e8f0; color: #334155; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                                ✓ Sem Reforço (${cenariosViaveis})
+                            </button>
+                            <button onclick="filtrarCenarios('reforco')" class="btn-filtro" data-filtro="reforco" style="background: #e2e8f0; color: #334155; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                                💳 Com Débito (${cenariosComReforco})
+                            </button>
+                        </div>
+                    </div>
                 `;
 
-                // Mostrar apenas cenários viáveis
-                const cenariosExibir = cenarios.filter(c => c.viavel).slice(0, 100);
+                // Salvar todos os cenários e prazos globalmente para filtros
+                window.todosCenarios = cenarios;
+                window.prazosDisponiveis = prazos;
 
-                cenariosExibir.forEach((c, i) => {
+                // Função para renderizar cenários
+                renderizarCenarios(cenarios, margem);
+
+            } catch (err) {
+                alert('Erro: ' + err.message);
+                console.error(err);
+            }
+        }
+
+        function renderizarCenarios(cenarios, margem) {
+            const grid = document.getElementById('scenarios-grid');
+            grid.innerHTML = '';
+            const cenariosExibir = cenarios.slice(0, 100);
+
+            cenariosExibir.forEach((c, i) => {
                     const card = document.createElement('div');
                     card.className = 'scenario-card';
                     
@@ -687,9 +711,10 @@
                         <span class="badge badge-prazo">${c.prazo}x CONSIG</span>
                         <span class="badge badge-desc">${c.desc.toFixed(0)}%</span>
                         ${!c.cabeNaMargem ? `<span class="badge" style="background: #3b82f6; color: white;">${c.prazoDebito}x DÉBITO</span>` : ''}
-                        <span class="badge ${c.viavel ? 'badge-ok' : 'badge-no'}">${c.viavel ? '✓ VIÁVEL' : '✗ INVIÁVEL'}</span>
-                        
+                        ${c.viavel ? '<span class="badge badge-ok">✓ VIÁVEL</span>' : ''}
+
                         <div class="scenario-title">${c.prazo} meses com ${c.desc.toFixed(0)}% de desconto</div>
+                        ${!c.viavel ? `<div style="background: #fef3c7; border-left: 3px solid #f59e0b; padding: 8px; border-radius: 4px; margin: 8px 0; font-size: 11px; color: #92400e; font-weight: 600;">⚠️ Atenção: requer reforço mediante débito em conta</div>` : ''}
                         
                         <div class="scenario-detail">
                             <span>Saldo Original</span>
@@ -777,12 +802,8 @@
                                     <strong>${formatBR(c.valorFaltanteMensal)}</strong>
                                 </div>
                                 <div class="result-row" style="border: none;">
-                                    <span>× ${c.prazo} meses =</span>
+                                    <span>× ${c.prazoDebito} meses =</span>
                                     <strong>${formatBR(c.valorTotalDebito)}</strong>
-                                </div>
-                                <div class="result-row" style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 6px; margin-top: 6px; border-bottom: none;">
-                                    <span>Financiado em ${c.prazoDebito}x:</span>
-                                    <strong>${formatBR(c.pmtDebito)}</strong>
                                 </div>
                             </div>
                             <div class="result-total">
@@ -803,16 +824,40 @@
                     grid.appendChild(card);
                 });
 
-                // Salvar cenários para o modal de parcelas
-                window.cenariosExibir = cenariosExibir;
-                window.margemAtual = margem;
+            // Salvar cenários para o modal de parcelas
+            window.cenariosExibir = cenariosExibir;
+            window.margemAtual = margem;
 
-                document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+            document.getElementById('results').scrollIntoView({behavior: 'smooth'});
+        }
 
-            } catch (err) {
-                alert('Erro: ' + err.message);
-                console.error(err);
+        function filtrarCenarios(filtro) {
+            const margem = window.margemAtual;
+            let cenariosFiltrados;
+
+            if (filtro === 'todos') {
+                cenariosFiltrados = window.todosCenarios;
+            } else if (filtro === 'viavel') {
+                cenariosFiltrados = window.todosCenarios.filter(c => c.viavel);
+            } else if (filtro === 'reforco') {
+                cenariosFiltrados = window.todosCenarios.filter(c => !c.viavel);
+            } else {
+                // Filtro por prazo específico
+                cenariosFiltrados = window.todosCenarios.filter(c => c.prazo === filtro);
             }
+
+            // Atualizar estilos dos botões
+            document.querySelectorAll('.btn-filtro').forEach(btn => {
+                if (btn.getAttribute('data-filtro') == filtro) {
+                    btn.style.background = '#C4A35A';
+                    btn.style.color = 'white';
+                } else {
+                    btn.style.background = '#e2e8f0';
+                    btn.style.color = '#334155';
+                }
+            });
+
+            renderizarCenarios(cenariosFiltrados, margem);
         }
         
         function gerarDetalhamento() {
