@@ -72,6 +72,11 @@
         }
         
         .input-section { padding: 20px; background: #f8f9fa; }
+        .input-section.highlight {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid #f59e0b;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        }
         .input-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -98,11 +103,27 @@
         }
         
         .contracts-section { padding: 20px; }
+        .contracts-section.highlight {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: 2px solid #f59e0b;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);
+        }
         .section-title {
             font-size: 16px;
             font-weight: 600;
             margin-bottom: 15px;
             color: #2C3E50;
+        }
+        .section-header {
+            background: #f59e0b;
+            color: white;
+            padding: 8px 15px;
+            margin: -15px -15px 15px -15px;
+            border-radius: 8px 8px 0 0;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .contract-item {
             background: #f8f9fa;
@@ -287,7 +308,7 @@
 
         <div class="config-section">
             <div class="config-title" style="cursor: pointer;" onclick="toggleConfig()">
-                ⚙️ Configurações Avançadas 
+                ⚙️ Configurações Avançadas
                 <span id="config-toggle" style="font-size: 12px; opacity: 0.7;">(clique para recolher)</span>
             </div>
             <div id="config-content" style="display: block;">
@@ -331,8 +352,8 @@
             </div>
         </div>
 
-        <div class="input-section" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);">
-            <div style="background: #f59e0b; color: white; padding: 8px 15px; margin: -15px -15px 15px -15px; border-radius: 8px 8px 0 0; font-weight: 600;">
+        <div class="input-section highlight">
+            <div class="section-header">
                 ⭐ Dados Principais - Preencha aqui
             </div>
             <div class="input-grid">
@@ -347,14 +368,13 @@
             </div>
         </div>
 
-        <div class="contracts-section" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #f59e0b; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.2);">
-            <div style="background: #f59e0b; color: white; padding: 8px 15px; margin: -15px -15px 15px -15px; border-radius: 8px 8px 0 0; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+        <div class="contracts-section highlight">
+            <div class="section-header">
                 <span>📋 Contratos - Adicione os saldos</span>
-                <button onclick="adicionarContrato()" style="background: white; color: #f59e0b; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
+                <button onclick="addContract()" style="background: white; color: #f59e0b; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">
                     + Adicionar Contrato
                 </button>
             </div>
-            <div class="section-title" style="display: none;">📋 Contratos</div>
             <div id="contracts-container">
                 <div class="contract-item">
                     <input type="text" placeholder="Saldo Contábil (R$)" class="contract-saldo">
@@ -413,7 +433,7 @@
             const toggle = document.getElementById('config-toggle');
             if (content.style.display === 'none') {
                 content.style.display = 'block';
-                toggle.textContent = '(clique para ocultar)';
+                toggle.textContent = '(clique para recolher)';
             } else {
                 content.style.display = 'none';
                 toggle.textContent = '(clique para expandir)';
@@ -471,7 +491,6 @@
             try {
                 const taxaInput = parseBR(document.getElementById('taxa').value) / 100;
                 const margem = parseBR(document.getElementById('margem').value);
-                window.margemAtual = margem;
                 const prazosStr = document.getElementById('prazos').value;
                 const incrementoDesc = parseInt(document.getElementById('incremento-desc').value) || 5;
                 const liminar = document.getElementById('liminar').value === 'deferido';
@@ -536,20 +555,32 @@
                         let valorDescontoFicticio = valorDescontoReal;
                         let pmtConsignado = pmtComDescontoReal;
                         let valorReforcoDebito = 0;
-
+                        
                         if (!cabeNaMargem) {
+                            // NÃO CABE: Buscar desconto FICTÍCIO que faz caber
+                            
                             let pmtTeste = pmtComDescontoReal;
-                            let d = descReal;
-                            const step = 0.005;
-                            while (pmtTeste > margem && d <= 0.95) {
-                                d += step;
-                                saldoComDescontoFicticio = saldoTotal * (1 - d);
+                            descFicticio = descReal;
+                            
+                            // Aumenta desconto fictício até caber
+                            while (pmtTeste > margem && descFicticio < 0.70) {
+                                descFicticio += 0.01;
+                                saldoComDescontoFicticio = saldoTotal * (1 - descFicticio);
                                 pmtTeste = calcPMT(saldoComDescontoFicticio, taxaInput, prazo);
                             }
-                            pmtConsignado = Math.min(pmtTeste, margem);
-                            descFicticio = d;
-                            valorDescontoFicticio = saldoTotal * descFicticio;
-                            valorReforcoDebito = Math.max(0, valorDescontoFicticio - valorDescontoReal);
+                            
+                            if (pmtTeste <= margem) {
+                                // Encontrou desconto fictício que cabe
+                                valorDescontoFicticio = saldoTotal * descFicticio;
+                                pmtConsignado = pmtTeste;
+                                
+                                // DIFERENÇA entre desconto fictício e real = REFORÇO/DÉBITO
+                                valorReforcoDebito = valorDescontoFicticio - valorDescontoReal;
+                            } else {
+                                // Não encontrou, usa margem
+                                pmtConsignado = margem;
+                                valorReforcoDebito = saldoComDescontoReal - saldoComDescontoFicticio;
+                            }
                         }
                         
                         // Valores para exibição
@@ -558,24 +589,13 @@
                         
                         // Débito em conta mensal (não é o reforço!)
                         const prazoDebito = Math.min(120, prazo);
-                        let pvConsignado;
-                        if (taxaInput === 0) {
-                            pvConsignado = Math.min(saldoComDescontoReal, pmtConsignado * prazo);
-                        } else {
-                            pvConsignado = Math.min(
-                                saldoComDescontoReal,
-                                pmtConsignado * ((1 - Math.pow(1 + taxaInput, -prazo)) / taxaInput)
-                            );
-                        }
-                        const pvDebito = Math.max(0, saldoComDescontoReal - pvConsignado);
-                        const pmtDebito = pvDebito > 0 ? calcPMT(pvDebito, taxaInput, prazoDebito) : 0;
-                        const valorTotalDebito = pmtDebito * prazoDebito;
+                        const valorTotalDebito = valorFaltanteMensal * prazo;
+                        const pmtDebito = valorTotalDebito / prazoDebito;
                         
-                        const totalMensal = cabeNaMargem ? pmtComDescontoReal : (pmtConsignado + pmtDebito);
+                        const totalMensal = pmtComDescontoReal;
                         const montante = pmtComDescontoReal * prazo;
                         const custo = montante - saldoComDescontoReal;
                         
-                        // VALIDAÇÃO DE VIABILIDADE FINANCEIRA
                         // VALIDAÇÃO DE VIABILIDADE FINANCEIRA
                         const margemAnual = margem * 12;
                         const dividaBaixa = saldoTotal <= (margemAnual * 2);
@@ -622,10 +642,13 @@
                     return b.prazo - a.prazo;
                 });
 
-                const totalCenarios = cenarios.length;
-                window.cenariosCalculados = cenarios;
+                const cenariosViaveis = cenarios.filter(c => c.viavel).length;
+                const cenariosInviaveis = cenarios.length - cenariosViaveis;
+                
+                // Salvar cenários viáveis globalmente para usar no detalhamento
+                window.cenariosCalculados = cenarios.filter(c => c.viavel);
 
-                document.getElementById('info-cenarios').textContent = totalCenarios;
+                document.getElementById('info-cenarios').textContent = cenariosViaveis;
                 document.getElementById('results').style.display = 'block';
                 const grid = document.getElementById('scenarios-grid');
                 grid.innerHTML = '';
@@ -636,7 +659,8 @@
                 document.getElementById('alert-container').innerHTML = `
                     <div class="alert" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                         <div style="flex: 1; min-width: 300px;">
-                            <strong>📊 Cenários Gerados:</strong> ${totalCenarios}
+                            <strong>🎯 ${cenariosViaveis} Cenários Viáveis Encontrados</strong>
+                            ${cenariosInviaveis > 0 ? `<br><span style="color: #64748b; font-size: 12px;">(${cenariosInviaveis} cenários filtrados por inviabilidade financeira)</span>` : ''}
                             <br><strong>Taxa:</strong> ${(taxaInput * 100).toFixed(2)}% a.m. | 
                             <strong>Prazos:</strong> ${prazos.join(', ')} meses | 
                             <strong>Incremento:</strong> ${incrementoDesc}%
@@ -647,9 +671,8 @@
                     </div>
                 `;
 
-                // Mostrar todos os cenários (viáveis e inviáveis)
-                const cenariosExibir = cenarios.slice(0, 100);
-                window.cenariosExibir = cenariosExibir;
+                // Mostrar apenas cenários viáveis
+                const cenariosExibir = cenarios.filter(c => c.viavel).slice(0, 100);
 
                 cenariosExibir.forEach((c, i) => {
                     const card = document.createElement('div');
@@ -664,9 +687,9 @@
                         <span class="badge badge-prazo">${c.prazo}x CONSIG</span>
                         <span class="badge badge-desc">${c.desc.toFixed(0)}%</span>
                         ${!c.cabeNaMargem ? `<span class="badge" style="background: #3b82f6; color: white;">${c.prazoDebito}x DÉBITO</span>` : ''}
+                        <span class="badge ${c.viavel ? 'badge-ok' : 'badge-no'}">${c.viavel ? '✓ VIÁVEL' : '✗ INVIÁVEL'}</span>
                         
                         <div class="scenario-title">${c.prazo} meses com ${c.desc.toFixed(0)}% de desconto</div>
-                        ${!c.cabeNaMargem ? `<div style="font-size: 11px; color: #dc2626; margin-bottom: 6px;">Motivo: ${c.motivoInviavel}</div>` : ''}
                         
                         <div class="scenario-detail">
                             <span>Saldo Original</span>
@@ -729,15 +752,6 @@
                         ` : `
                         <div class="result-box" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
                             <div class="result-title">💳 MARGEM + DÉBITO EM CONTA</div>
-                            
-                            <div style="background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); padding: 8px; border-radius: 6px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 20px;">⚠️</span>
-                                <div style="flex: 1;">
-                                    <div style="font-size: 10px; opacity: 0.9; font-weight: 600;">ATENÇÃO: REQUER REFORÇO</div>
-                                    <div style="font-size: 12px; opacity: 0.95;">Este cenário não cabe 100% na margem</div>
-                                </div>
-                            </div>
-                            
                             <div class="result-row">
                                 <span>PMT Total Calculado:</span>
                                 <strong>${formatBR(c.pmtCalculado)}</strong>
@@ -750,7 +764,7 @@
                                 </div>
                                 <div class="result-row" style="border: none;">
                                     <span>Pagamento em Conta Corrente:</span>
-                                    <strong>${formatBR(c.pmtDebito)}</strong>
+                                    <strong>${formatBR(c.valorFaltanteMensal)}</strong>
                                 </div>
                                 <div style="font-size: 10px; opacity: 0.7; margin-top: 4px; font-style: italic;">
                                     ${c.pmtConsignado < margem ? `💰 Margem restante: ${formatBR(margem - c.pmtConsignado)}` : '(usa margem completa)'}
@@ -760,23 +774,22 @@
                                 <div style="font-size: 11px; opacity: 0.9; margin-bottom: 6px; text-align: center; font-weight: 600;">FINANCIAMENTO DO DÉBITO</div>
                                 <div class="result-row" style="border: none;">
                                     <span>Débito mensal:</span>
-                                    <strong>${formatBR(c.pmtDebito)}</strong>
+                                    <strong>${formatBR(c.valorFaltanteMensal)}</strong>
                                 </div>
-                                <div class="result-row" style="border: none; padding-top: 6px; margin-top: 6px;">
-                                    <span>Total acumulado (${c.prazoDebito} meses):</span>
+                                <div class="result-row" style="border: none;">
+                                    <span>× ${c.prazo} meses =</span>
                                     <strong>${formatBR(c.valorTotalDebito)}</strong>
                                 </div>
-                                ${c.prazoDebito === 120 && c.prazo > 120 ? `
-                                <div style="font-size: 10px; opacity: 0.8; margin-top: 6px; text-align: center; font-style: italic;">
-                                    ⚠️ Prazo máximo de débito limitado a 120 meses
+                                <div class="result-row" style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 6px; margin-top: 6px; border-bottom: none;">
+                                    <span>Financiado em ${c.prazoDebito}x:</span>
+                                    <strong>${formatBR(c.pmtDebito)}</strong>
                                 </div>
-                                ` : ''}
                             </div>
                             <div class="result-total">
                                 <div style="font-size: 10px; opacity: 0.8;">PARCELA MENSAL TOTAL</div>
                                 <div class="result-total-value">${formatBR(c.totalMensal)}</div>
                                 <div style="font-size: 11px; opacity: 0.9; margin-top: 4px;">
-                                    Consignado ${formatBR(c.pmtConsignado)} + Débito ${formatBR(c.pmtDebito)}
+                                    Consignado ${formatBR(c.pmtConsignado)} + Débito ${formatBR(c.valorFaltanteMensal)}
                                 </div>
                             </div>
                         </div>
@@ -790,6 +803,10 @@
                     grid.appendChild(card);
                 });
 
+                // Salvar cenários para o modal de parcelas
+                window.cenariosExibir = cenariosExibir;
+                window.margemAtual = margem;
+
                 document.getElementById('results').scrollIntoView({behavior: 'smooth'});
 
             } catch (err) {
@@ -799,6 +816,8 @@
         }
         
         function gerarDetalhamento() {
+            console.log('[DEBUG] Iniciando gerarDetalhamento');
+            
             if (!window.dadosGlobais || !window.cenariosCalculados) {
                 alert('Calcule os cenários primeiro!');
                 return;
@@ -806,6 +825,9 @@
             
             const { saldoTotal, margem, taxa } = window.dadosGlobais;
             const cenariosViaveis = window.cenariosCalculados.slice(0, 5);
+            
+            console.log('[DEBUG] Valores:', { saldoTotal, margem, taxa });
+            console.log('[DEBUG] Cenários viáveis:', cenariosViaveis.length);
             
             if (cenariosViaveis.length === 0) {
                 alert('Nenhum cenário viável encontrado!');
@@ -819,19 +841,27 @@ Taxa: ${taxa.toFixed(2)}% a.m.
 `;
             
             cenariosViaveis.forEach((dados, index) => {
+                console.log(`[DEBUG] Processando proposta ${index + 1}:`, dados);
+                
                 detalhamento += `Proposta ${index + 1}:\n`;
                 
-                if (!dados.cabeNaMargem) {
+                if (dados.valorReforcoDebito > 0) {
                     // Proposta com débito em conta
-                    detalhamento += `Operação consignada em ${dados.prazo}x de ${formatBR(dados.pmtConsignado)} + operação cobrada mediante débito em conta em ${dados.prazoDebito}x de ${formatBR(dados.pmtDebito)}\n`;
-                        detalhamento += `Parcela mensal total: ${formatBR(dados.pmtConsignado + dados.pmtDebito)}\n`;
-                        detalhamento += `Taxa de ${taxa.toFixed(2)}% a.m.\n\n`;
+                    detalhamento += `Operação consignada em ${dados.prazo}x de ${formatBR(dados.pmtConsignado)} + operação cobrada mediante débito em conta em ${dados.prazo}x de ${formatBR(dados.valorFaltanteMensal)}\n`;
+                    detalhamento += `Taxa de ${taxa.toFixed(2)}% a.m.\n\n`;
+                    
+                    // Se tem reforço anual
+                    const numReforcos = Math.ceil(dados.prazo / 12);
+                    const valorReforcoMensal = dados.valorReforcoDebito / numReforcos;
+                    detalhamento += `${dados.prazo}x de ${formatBR(dados.pmtConsignado)} + ${numReforcos} Reforços anuais de ${formatBR(valorReforcoMensal)}\n\n`;
                 } else {
                     // Proposta só consignado
                     detalhamento += `Operação consignada em ${dados.prazo}x de ${formatBR(dados.pmtConsignado)}\n`;
                     detalhamento += `Taxa de ${taxa.toFixed(2)}% a.m.\n\n`;
                 }
             });
+            
+            console.log('[DEBUG] Detalhamento gerado:', detalhamento);
             
             // Criar modal
             const modal = document.createElement('div');
@@ -852,13 +882,13 @@ Taxa: ${taxa.toFixed(2)}% a.m.
             modal.innerHTML = `
                 <div style="background: white; padding: 30px; border-radius: 12px; max-width: 800px; max-height: 80vh; overflow-y: auto; position: relative;">
                     <button onclick="fecharModal()" style="position: absolute; top: 15px; right: 15px; background: #dc2626; color: white; border: none; width: 35px; height: 35px; border-radius: 50%; cursor: pointer; font-size: 20px; font-weight: bold;">×</button>
-                    
+
                     <h2 style="color: #b8860b; margin-bottom: 20px; font-size: 24px;">📋 Detalhamento das Propostas</h2>
-                    
+
                     <div style="background: #f9fafb; padding: 20px; border-radius: 8px; border-left: 4px solid #b8860b;">
                         <pre style="font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; margin: 0; white-space: pre-wrap; color: #1f2937;">${detalhamento}</pre>
                     </div>
-                    
+
                     <div style="margin-top: 20px; display: flex; gap: 10px;">
                         <button onclick="copiarDetalhamento()" style="flex: 1; background: #b8860b; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
                             📋 Copiar Texto
@@ -869,16 +899,18 @@ Taxa: ${taxa.toFixed(2)}% a.m.
                     </div>
                 </div>
             `;
-            
+
             document.body.appendChild(modal);
-            
+
+            console.log('[DEBUG] Modal criado e adicionado ao body');
+
             // Salvar referência ao modal para fechar
             window.modalAtual = modal;
-            
+
             // Salvar detalhamento para copiar
             window.detalhamentoTexto = detalhamento;
         }
-        
+
         function fecharModal() {
             if (window.modalAtual) {
                 window.modalAtual.remove();
@@ -893,6 +925,7 @@ Taxa: ${taxa.toFixed(2)}% a.m.
                 alert('❌ Erro ao copiar. Tente selecionar o texto manualmente.');
             });
         }
+
         function mostrarParcelas(index) {
             const c = window.cenariosExibir[index];
             if (!c) return;
@@ -932,10 +965,12 @@ Taxa: ${taxa.toFixed(2)}% a.m.
             document.getElementById('parcelas-modal').style.display = 'flex';
             window.parcelasAtual = { index, maxMeses, consLen, debLen, pmtCons: c.pmtConsignado, pmtDeb: c.cabeNaMargem ? 0 : c.pmtDebito };
         }
+
         function fecharParcelas() {
             document.getElementById('parcelas-modal').style.display = 'none';
             window.parcelasAtual = null;
         }
+
         function exportarParcelas() {
             const pa = window.parcelasAtual;
             if (!pa) return;
