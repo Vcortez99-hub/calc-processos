@@ -320,11 +320,11 @@
                             • Até 84 meses: <strong>35%</strong><br>
                             • 85-96 meses: <strong>25%</strong><br>
                             • 97-149 meses: <strong>15%</strong><br>
-                            • 150 meses: <strong>10%</strong><br><br>
+                            • 150+ meses: <strong>10%</strong><br><br>
                             <strong>SEM LIMINAR (Indeferido):</strong><br>
-                            • Até 84 meses: <strong>20%</strong><br>
-                            • 85-116 meses: <strong>15%</strong><br>
-                            • 117-150 meses: <strong>10%</strong>
+                            • Até 96 meses: <strong>20%</strong><br>
+                            • 97-149 meses: <strong>15%</strong><br>
+                            • 150+ meses: <strong>10%</strong>
                         </div>
                     </div>
                 </div>
@@ -461,10 +461,9 @@
                 return 0.10;                        // 10% (150+)
             } else {
                 // SEM LIMINAR (INDEFERIDO)
-                if (prazo <= 84) return 0.20;      // 20%
-                if (prazo <= 116) return 0.15;     // 15%
-                if (prazo <= 150) return 0.10;     // 10%
-                return 0.10;                        // 10% (acima de 150)
+                if (prazo <= 96) return 0.20;      // 20%
+                if (prazo <= 149) return 0.15;     // 15%
+                return 0.10;                        // 10% (150+)
             }
         }
 
@@ -538,15 +537,15 @@
                         let saldoConsignado, saldoDebito;
 
                         if (cabeNaMargem) {
-                            // ✅ CABE NA MARGEM
+                            // ✅ CABE NA MARGEM - Não precisa débito
                             pmtConsignado = pmtComDescontoAplicado;
                             saldoConsignado = saldoComDesconto;
 
-                            // Débito = valor do desconto aplicado (financiado em até 120x)
-                            prazoDebito = Math.min(120, prazo);
-                            saldoDebito = valorDescontoAplicado;
-                            pmtDebito = valorDescontoAplicado > 0 ? calcPMT(valorDescontoAplicado, taxaInput, prazoDebito) : 0;
-                            descontoParaDebito = 0; // Não precisa desconto adicional
+                            // SEM DÉBITO (cabe tudo na margem)
+                            prazoDebito = 0;
+                            saldoDebito = 0;
+                            pmtDebito = 0;
+                            descontoParaDebito = 0;
 
                         } else {
                             // ❌ NÃO CABE NA MARGEM
@@ -571,10 +570,10 @@
                             descontoParaDebito = (descontoTotal - descAplicado) * 100; // Em %
                             valorDescontoDebito = (saldoTotal * descontoTotal) - valorDescontoAplicado;
 
-                            // Débito = desconto aplicado + desconto adicional
+                            // Débito = APENAS o desconto adicional (p/ débito)
                             prazoDebito = Math.min(120, prazo);
-                            saldoDebito = valorDescontoAplicado + valorDescontoDebito;
-                            pmtDebito = calcPMT(saldoDebito, taxaInput, prazoDebito);
+                            saldoDebito = valorDescontoDebito;
+                            pmtDebito = valorDescontoDebito > 0 ? calcPMT(valorDescontoDebito, taxaInput, prazoDebito) : 0;
                         }
 
                         // Valores para exibição
@@ -1008,7 +1007,7 @@ Taxa: ${taxa.toFixed(2)}% a.m.
                     </div>
                     <div class="info-card">
                         <div class="info-card-label">Desconto (${c.desc}%)</div>
-                        <div class="info-card-value" style="color: #dc2626;">- ${formatBR(c.valorDesconto)}</div>
+                        <div class="info-card-value" style="color: #dc2626;">- ${formatBR(c.valorDescontoAplicado)}</div>
                     </div>
                     <div class="info-card">
                         <div class="info-card-label">Saldo a Negociar</div>
